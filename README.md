@@ -1,5 +1,7 @@
 # rs-morphy4
 
+[![Crates.io version](https://img.shields.io/crates/v/rs-morphy4.svg)](https://crates.io/crates/rs-morphy4)
+
 [Русская версия](README_RU.md)
 
 [Another](https://www.youtube.com/watch?v=jEI3N9kIyP4) Russian morphological analysis and inflection library (this time implemented in Rust): lemmas, grammatical tags, unknown-word prediction, compound words, lexemes and agreement with integer counts. The library processes individual tokens; tokenization and contextual disambiguation are outside its scope.
