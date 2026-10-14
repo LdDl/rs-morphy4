@@ -4,7 +4,7 @@
 
 `dicts_ru/` contains the compiled Russian morphological dictionary from [mawo-pymorphy3](https://github.com/mawo-ru/mawo-pymorphy3/tree/f60ff89ced0aab256470061e1e566fab317b6170/mawo_pymorphy3/dicts_ru), commit `f60ff89ced0aab256470061e1e566fab317b6170`. All 10 files are preserved without changes.
 
-The dictionary originates from [OpenCorpora](https://opencorpora.org/), maintained by the OpenCorpora contributors. The distribution source is the MAWO Team's mawo-pymorphy3 project. According to `dicts_ru/meta.json`, the source revision is `417260`, the compiled format is `2.4`, and the compilation timestamp is `2025-09-15T06:52:07.147219`.
+The dictionary originates from [OpenCorpora](https://opencorpora.org/), maintained by the OpenCorpora contributors. The distribution source is the MAWO Team's mawo-pymorphy3 project. According to `dicts_ru/meta.json`, the source revision is `417260` and the compiled format is `2.4`.
 
 The bundle contains word and suffix-prediction DAWGs, paradigms, suffixes, grammatical tables and metadata. OpenCorpora XML is an input for dictionary compilation; it is not required to read these compiled files and is not included here.
 
