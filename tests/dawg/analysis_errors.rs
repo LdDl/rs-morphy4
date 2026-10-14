@@ -84,6 +84,9 @@ fn morphology_does_not_turn_dictionary_errors_into_predictions() {
     let directory = fixture_directory("ёлка", [255, 255, 0, 0]);
     let analyzer = rs_morphy4::MorphAnalyzer::load(directory.path()).unwrap();
     let error = analyzer.parse("ёлка").unwrap_err();
+    assert!(analyzer.parse("ёлка").is_err());
+    assert_eq!(analyzer.cache_info().entries, 0);
+    assert_eq!(analyzer.cache_info().misses, 2);
     assert!(matches!(
         error,
         DictionaryError::BinaryError {
