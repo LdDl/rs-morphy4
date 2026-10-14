@@ -1,0 +1,21 @@
+rs-morphy4
+Rust implementation: Lopanov Dmitrii (LdDl).
+
+The Rust implementation is licensed under the Apache License, Version 2.0
+(LICENSE). Portions adapted from the sources below also retain their MIT
+license terms (LICENSE-MIT).
+
+The Tag implementation is adapted from MAWOTag in mawo-pymorphy3 1.0.4,
+commit f60ff89ced0aab256470061e1e566fab317b6170.
+Source: https://github.com/mawo-ru/mawo-pymorphy3
+Copyright (c) 2025 MAWO Team. MIT License.
+
+The source project credits pymorphy2 and pymorphy3:
+pymorphy2: Copyright (c) Mikhail Korobov and contributors.
+https://github.com/pymorphy2/pymorphy2
+pymorphy3: Copyright (c) 2022 (continuation of pymorphy2).
+Maintainers: Danylo Halaiko, insolor and contributors.
+https://github.com/no-plagiarism/pymorphy3
+
+OpenCorpora dictionary data is not included in this package. The source
+project identifies its dictionary data license as CC BY-SA 3.0.
