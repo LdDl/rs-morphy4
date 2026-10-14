@@ -1,4 +1,4 @@
-use super::BinaryError;
+use crate::dictionary::binary::error::BinaryError;
 use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 /// A dictionary file could not be read, decoded or validated.
 #[derive(Debug)]
 pub enum DictionaryError {
-    BinaryError { path: PathBuf, source: BinaryError },
+    BinaryError {
+        path: PathBuf,
+        source: BinaryError,
+    },
     IoError {
         path: PathBuf,
         source: std::io::Error,
@@ -38,11 +41,14 @@ pub enum ValidationError {
 }
 
 impl DictionaryError {
-    pub(crate) fn binary(path: &Path, source: BinaryError) -> Self {
-        Self::BinaryError { path: path.to_owned(), source }
+    pub fn binary(path: &Path, source: BinaryError) -> Self {
+        Self::BinaryError {
+            path: path.to_owned(),
+            source,
+        }
     }
 
-    pub(crate) fn invalid(path: &Path, reason: ValidationError) -> Self {
+    pub fn invalid(path: &Path, reason: ValidationError) -> Self {
         Self::InvalidData {
             path: path.to_owned(),
             reason,

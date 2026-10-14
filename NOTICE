@@ -5,7 +5,8 @@ The Rust implementation is licensed under the Apache License, Version 2.0
 (LICENSE). Portions adapted from the sources below also retain their MIT
 license terms (LICENSE-MIT).
 
-The Tag implementation is adapted from MAWOTag in mawo-pymorphy3 1.0.4,
+The tag, dictionary and dictionary analysis implementations are adapted from
+mawo-pymorphy3 1.0.4,
 commit f60ff89ced0aab256470061e1e566fab317b6170.
 Source: https://github.com/mawo-ru/mawo-pymorphy3
 Copyright (c) 2025 MAWO Team. MIT License.
@@ -23,3 +24,8 @@ MAWO Team's mawo-pymorphy3. The files are included without changes.
 Source: https://opencorpora.org/
 License: https://creativecommons.org/licenses/by-sa/3.0/
 The pinned distribution source and license text are documented in data/README.md.
+
+DAWG traversal and bit layout are adapted from dawg2-python 0.9.0
+(dawg_python/wrapper.py and units.py).
+Copyright (c) Mikhail Korobov, 2012. MIT License (LICENSE-MIT-DAWG).
+Source: https://github.com/pymorphy2-fork/DAWG-Python/
