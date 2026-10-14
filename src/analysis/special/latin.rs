@@ -14,7 +14,8 @@ pub fn is_latin(word: &str) -> bool {
     if word.contains('-') && latin && cyrillic {
         !word.split('-').filter(|p| has_cyrillic(p)).any(|part| {
             INFLECTION_ENDINGS.iter().any(|ending| {
-                part.strip_suffix(ending).is_some_and(|stem| stem.chars().count() > 2)
+                part.strip_suffix(ending)
+                    .is_some_and(|stem| stem.chars().count() > 2)
             })
         })
     } else {

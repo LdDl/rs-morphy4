@@ -1,6 +1,8 @@
 use crate::analysis::dictionary::DictionaryAnalyzer;
 use crate::analysis::parse::Parse;
-use crate::analysis::{patterns, prediction, special};
+use crate::analysis::patterns;
+use crate::analysis::prediction;
+use crate::analysis::special;
 use crate::dictionary::DictionaryError;
 
 pub fn parse(dictionary: &DictionaryAnalyzer, word: &str) -> Result<Vec<Parse>, DictionaryError> {

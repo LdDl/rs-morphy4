@@ -14,7 +14,9 @@ pub struct MorphAnalyzer {
 
 impl MorphAnalyzer {
     pub fn load(directory: impl AsRef<Path>) -> Result<Self, DictionaryError> {
-        Ok(Self { dictionary: DictionaryAnalyzer::load(directory)? })
+        Ok(Self {
+            dictionary: DictionaryAnalyzer::load(directory)?,
+        })
     }
 
     pub fn dictionary(&self) -> &DictionaryAnalyzer {

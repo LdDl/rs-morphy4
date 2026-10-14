@@ -15,8 +15,13 @@ pub struct Parse {
 impl Parse {
     pub fn synthetic(word: &str, normal_form: String, tag: Tag, score: f64) -> Self {
         Self {
-            word: word.to_owned(), normal_form, tag, score,
-            paradigm_id: None, form_index: None, stem: None,
+            word: word.to_owned(),
+            normal_form,
+            tag,
+            score,
+            paradigm_id: None,
+            form_index: None,
+            stem: None,
         }
     }
 }
