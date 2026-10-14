@@ -4,10 +4,15 @@ use std::sync::Mutex;
 use crate::analysis::parse::Parse;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Snapshot of a FIFO cache; capacity limits token count rather than bytes.
 pub struct CacheInfo {
+    /// Maximum number of normalized tokens; zero disables storage.
     pub capacity: usize,
+    /// Number of currently stored tokens.
     pub entries: usize,
+    /// Successful lookups since creation or the last clear.
     pub hits: u64,
+    /// Unsuccessful lookups, including calls with storage disabled; blank input is excluded.
     pub misses: u64,
 }
 

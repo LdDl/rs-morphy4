@@ -9,23 +9,29 @@ use crate::dictionary::tables::DictionaryTables;
 /// Indices of one form in the ordered dictionary tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParadigmForm {
+    /// Index into the suffix table.
     pub suffix_id: u16,
+    /// Index into the tag table.
     pub tag_id: u16,
+    /// Index into the paradigm prefix table.
     pub prefix_id: u16,
 }
 
 #[derive(Debug)]
+/// Ordered word forms sharing an inflection pattern; the first form is normal.
 pub struct Paradigm {
     forms: Vec<ParadigmForm>,
 }
 
 impl Paradigm {
+    /// Returns forms in dictionary order, including duplicates.
     pub fn forms(&self) -> &[ParadigmForm] {
         &self.forms
     }
 }
 
 #[derive(Debug)]
+/// Validated dictionary paradigms, indexed by their stored identifiers.
 pub struct Paradigms {
     entries: Vec<Paradigm>,
 }
@@ -41,6 +47,7 @@ impl Paradigms {
         Self::decode(&bytes, tables).map_err(|source| DictionaryError::binary(path, source))
     }
 
+    /// Returns all paradigms in identifier order.
     pub fn entries(&self) -> &[Paradigm] {
         &self.entries
     }

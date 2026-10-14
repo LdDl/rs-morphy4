@@ -6,20 +6,32 @@ use std::path::{Path, PathBuf};
 /// A dictionary file could not be read, decoded or validated.
 #[derive(Debug)]
 pub enum DictionaryError {
+    /// A binary structure or traversed record is invalid.
     BinaryError {
+        /// Dictionary file involved in the failure.
         path: PathBuf,
+        /// Underlying decoding or I/O error.
         source: BinaryError,
     },
+    /// A dictionary file could not be read.
     IoError {
+        /// Dictionary file involved in the failure.
         path: PathBuf,
+        /// Underlying decoding or I/O error.
         source: std::io::Error,
     },
+    /// JSON syntax or a serialized field type is invalid.
     ParseError {
+        /// Dictionary file involved in the failure.
         path: PathBuf,
+        /// Underlying decoding or I/O error.
         source: serde_json::Error,
     },
+    /// Decoded content violates a dictionary constraint.
     InvalidData {
+        /// Dictionary file involved in the failure.
         path: PathBuf,
+        /// Violated dictionary constraint.
         reason: ValidationError,
     },
 }
@@ -27,20 +39,69 @@ pub enum DictionaryError {
 /// A violated constraint in a dictionary file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
-    MissingTable { format: String },
-    InvalidTableFilename { filename: String },
+    /// Metadata has no filename for the required tag format.
+    MissingTable {
+        /// Required tag notation.
+        format: String,
+    },
+    /// A table name is not a single filename inside the dictionary directory.
+    InvalidTableFilename {
+        /// Rejected table filename.
+        filename: String,
+    },
+    /// A feature definition has an empty name.
     EmptyGrammemeName,
-    DuplicateGrammemeName { name: String },
-    UnknownParent { name: String, parent: String },
-    UnknownGrammeme { name: String, tag_index: usize },
-    DuplicateMetadataKey { key: String },
-    UnsupportedFormat { found: String, expected: String },
-    UnsupportedLanguage { found: String, expected: String },
+    /// Multiple feature definitions share a name.
+    DuplicateGrammemeName {
+        /// Feature code.
+        name: String,
+    },
+    /// A feature names an undefined parent category.
+    UnknownParent {
+        /// Feature code.
+        name: String,
+        /// Undefined parent feature code.
+        parent: String,
+    },
+    /// A tag contains an undefined or empty feature code.
+    UnknownGrammeme {
+        /// Feature code.
+        name: String,
+        /// Tag table index.
+        tag_index: usize,
+    },
+    /// A metadata key occurs more than once.
+    DuplicateMetadataKey {
+        /// Duplicated metadata key.
+        key: String,
+    },
+    /// The compiled format version is unsupported.
+    UnsupportedFormat {
+        /// Value recorded in the dictionary.
+        found: String,
+        /// Required value or count.
+        expected: String,
+    },
+    /// The dictionary language is unsupported.
+    UnsupportedLanguage {
+        /// Value recorded in the dictionary.
+        found: String,
+        /// Required value or count.
+        expected: String,
+    },
+    /// The prefix table is empty.
     EmptyParadigmPrefixes,
-    LengthMismatch { expected: usize, actual: usize },
+    /// A JSON table length differs from metadata.
+    LengthMismatch {
+        /// Required value or count.
+        expected: usize,
+        /// Observed count.
+        actual: usize,
+    },
 }
 
 impl DictionaryError {
+    /// Associates a binary decoding error with its dictionary file.
     pub fn binary(path: &Path, source: BinaryError) -> Self {
         Self::BinaryError {
             path: path.to_owned(),
@@ -48,6 +109,7 @@ impl DictionaryError {
         }
     }
 
+    /// Associates a validation failure with its dictionary file.
     pub fn invalid(path: &Path, reason: ValidationError) -> Self {
         Self::InvalidData {
             path: path.to_owned(),

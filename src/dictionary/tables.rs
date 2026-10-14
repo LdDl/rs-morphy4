@@ -13,9 +13,13 @@ use crate::dictionary::metadata::{Grammeme, Metadata};
 /// Ordered tables whose indices are used by binary paradigms and DAWGs.
 #[derive(Debug)]
 pub struct DictionaryTables {
+    /// Source and compilation settings.
     pub metadata: Metadata,
+    /// Feature definitions and their parent categories.
     pub grammemes: Vec<Grammeme>,
+    /// Tags in the identifier order used by paradigms.
     pub tags: Vec<Tag>,
+    /// Suffix strings in the identifier order used by paradigms.
     pub suffixes: Vec<String>,
 }
 

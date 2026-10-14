@@ -7,7 +7,9 @@ use std::fmt;
 /// the set contains conflicting values of the same category.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tag {
+    /// OpenCorpora part-of-speech code, or a special-token code such as LATN.
     pub pos: String,
+    /// Sorted feature codes; the part of speech is stored separately.
     pub grammemes: BTreeSet<String>,
 }
 

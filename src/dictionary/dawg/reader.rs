@@ -8,6 +8,7 @@ use crate::dictionary::file;
 use crate::dictionary::dawg::records::DawgRecord;
 
 #[derive(Debug)]
+/// In-memory DAWG with typed records and checked traversal.
 pub struct RecordDawg<R: DawgRecord> {
     path: PathBuf,
     storage: Storage,

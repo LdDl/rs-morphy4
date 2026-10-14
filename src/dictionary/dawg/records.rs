@@ -6,20 +6,29 @@ mod sealed {
 
 /// A fixed-size, big-endian record stored as a base64 DAWG payload.
 pub trait DawgRecord: sealed::Sealed + Sized {
+    /// Decoded payload size in bytes.
     const SIZE: usize;
+    /// Decodes exactly SIZE bytes or returns a record-length error.
     fn decode(bytes: &[u8]) -> Result<Self, BinaryError>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Dictionary reference encoded as two big-endian u16 values.
 pub struct WordRecord {
+    /// Index into the paradigm table.
     pub paradigm_id: u16,
+    /// Index of the form within the paradigm.
     pub form_index: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Suffix prediction count and dictionary reference encoded as u32, u16, u16.
 pub struct PredictionRecord {
+    /// Observed frequency recorded by the dictionary compiler.
     pub count: u32,
+    /// Index into the paradigm table.
     pub paradigm_id: u16,
+    /// Index of the form within the paradigm.
     pub form_index: u16,
 }
 

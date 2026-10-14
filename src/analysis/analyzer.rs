@@ -18,6 +18,9 @@ pub struct MorphAnalyzer {
 
 impl MorphAnalyzer {
     /// Loads a dictionary with a FIFO cache of at most 1024 normalized tokens.
+    ///
+    /// # Errors
+    /// Returns an error for unreadable, malformed or unsupported dictionary files.
     pub fn load(directory: impl AsRef<Path>) -> Result<Self, DictionaryError> {
         Ok(Self::from_shared(
             Arc::new(DictionaryAnalyzer::load(directory)?),
@@ -33,10 +36,12 @@ impl MorphAnalyzer {
         }
     }
 
+    /// Borrows the loaded dictionary without copying it.
     pub fn dictionary(&self) -> &DictionaryAnalyzer {
         &self.dictionary
     }
 
+    /// Returns an owning handle to the same immutable dictionary.
     pub fn shared_dictionary(&self) -> Arc<DictionaryAnalyzer> {
         Arc::clone(&self.dictionary)
     }
@@ -45,6 +50,10 @@ impl MorphAnalyzer {
     ///
     /// Parsing runs outside the cache lock. Concurrent misses may compute the same token.
     /// Errors are not cached; returned values can be modified independently of the cache.
+    /// Input is trimmed and lowercased; blank input returns no analyses.
+    ///
+    /// # Errors
+    /// Returns a dictionary error if a traversed record or its table reference is invalid.
     pub fn parse(&self, input: &str) -> Result<Vec<Parse>, DictionaryError> {
         let key = normalization::normalize_input(input);
         if key.is_empty() {
@@ -65,11 +74,13 @@ impl MorphAnalyzer {
         normalization::parse(input, |input| word::parse(&self.dictionary, input))
     }
 
+    /// Returns a snapshot of cache size and counters, shared by analyzer clones.
     pub fn cache_info(&self) -> CacheInfo {
         self.cache.info()
     }
 
     /// Clears cached results and counters for this analyzer and its clones.
+    /// An already running parse can repopulate the cache after this call.
     pub fn clear_cache(&self) {
         self.cache.clear();
     }

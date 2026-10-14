@@ -7,6 +7,7 @@ use crate::dictionary::DictionaryError;
 use crate::tag::Tag;
 
 impl MorphAnalyzer {
+    /// Returns tags in ranked analysis order, including duplicates.
     pub fn tag(&self, word: &str) -> Result<Vec<Tag>, DictionaryError> {
         Ok(self.parse(word)?.into_iter().map(|p| p.tag).collect())
     }
@@ -47,12 +48,17 @@ impl MorphAnalyzer {
 
     /// Expands a parse from this dictionary in paradigm order, preserving duplicates.
     /// Synthetic analyses without a paradigm return only the supplied form.
+    ///
+    /// # Errors
+    /// Returns an error if the parse contains an incomplete or out-of-range dictionary reference.
     pub fn lexeme(&self, parse: &Parse) -> Result<Vec<Parse>, InflectionError> {
         inflection::lexeme(self.dictionary(), parse)
     }
 
     /// Selects a form satisfying all features, then maximizes similarity to the source.
     /// Rare cases are mapped to common cases only if no exact candidate exists.
+    /// No matching form produces `None`; a malformed parse reference produces an error.
+    /// The parse must belong to this dictionary; its origin is not checked.
     pub fn inflect<I, S>(
         &self,
         parse: &Parse,

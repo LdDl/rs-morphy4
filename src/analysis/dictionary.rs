@@ -5,6 +5,7 @@ use crate::dictionary::dawg::{RecordDawg, WordRecord};
 use crate::dictionary::{BinaryError, DictionaryError, DictionaryTables, Paradigms, TableKind};
 
 #[derive(Debug)]
+/// In-memory dictionary lookup without prediction or special-token rules.
 pub struct DictionaryAnalyzer {
     tables: DictionaryTables,
     paradigms: Paradigms,
@@ -28,10 +29,12 @@ impl DictionaryAnalyzer {
         })
     }
 
+    /// Borrows the ordered JSON tables and compilation metadata.
     pub fn tables(&self) -> &DictionaryTables {
         &self.tables
     }
 
+    /// Borrows the validated inflection paradigms.
     pub fn paradigms(&self) -> &Paradigms {
         &self.paradigms
     }
