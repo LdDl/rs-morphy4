@@ -153,7 +153,10 @@ fn inflected_forms_keep_paradigm_and_allow_repeated_inflection() {
 #[test]
 fn synthetic_and_incompatible_forms_do_not_invent_inflections() {
     let token = parse("hello");
-    assert_eq!(ANALYZER.lexeme(&token).unwrap(), [token.clone()]);
+    assert_eq!(
+        ANALYZER.lexeme(&token).unwrap().as_slice(),
+        std::slice::from_ref(&token)
+    );
     assert!(ANALYZER.inflect(&token, ["gent"]).unwrap().is_none());
     assert_eq!(ANALYZER.inflect(&token, ["LATN"]).unwrap(), Some(token));
     assert!(
