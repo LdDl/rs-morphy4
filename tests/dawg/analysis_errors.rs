@@ -7,7 +7,7 @@ use rs_morphy4::dictionary::{BinaryError, DictionaryError, TableKind};
 
 use crate::fixture::DawgFixture;
 
-fn analyzer(word: &str, record: [u8; 4]) -> DictionaryAnalyzer {
+fn fixture_directory(word: &str, record: [u8; 4]) -> tempfile::TempDir {
     let temp = tempfile::tempdir().unwrap();
     let bundled = Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru");
     for filename in [
@@ -24,7 +24,12 @@ fn analyzer(word: &str, record: [u8; 4]) -> DictionaryAnalyzer {
         DawgFixture::new(word, STANDARD.encode(record).as_bytes()).bytes(),
     )
     .unwrap();
-    DictionaryAnalyzer::load(temp.path()).unwrap()
+    temp
+}
+
+fn analyzer(word: &str, record: [u8; 4]) -> DictionaryAnalyzer {
+    let directory = fixture_directory(word, record);
+    DictionaryAnalyzer::load(directory.path()).unwrap()
 }
 
 #[test]
@@ -68,6 +73,23 @@ fn inconsistent_word_affixes_are_not_silently_accepted() {
             source: BinaryError::AffixMismatch {
                 paradigm: 8,
                 form: 0
+            },
+            ..
+        }
+    ));
+}
+
+#[test]
+fn morphology_does_not_turn_dictionary_errors_into_predictions() {
+    let directory = fixture_directory("ёлка", [255, 255, 0, 0]);
+    let analyzer = rs_morphy4::MorphAnalyzer::load(directory.path()).unwrap();
+    let error = analyzer.parse("ёлка").unwrap_err();
+    assert!(matches!(
+        error,
+        DictionaryError::BinaryError {
+            source: BinaryError::InvalidReference {
+                table: TableKind::Paradigm,
+                ..
             },
             ..
         }
