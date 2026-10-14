@@ -1,0 +1,81 @@
+use std::collections::{BTreeSet, HashSet};
+
+use crate::analysis::analyzer::MorphAnalyzer;
+use crate::analysis::inflection::{self, InflectionError};
+use crate::analysis::parse::Parse;
+use crate::dictionary::DictionaryError;
+use crate::tag::Tag;
+
+impl MorphAnalyzer {
+    pub fn tag(&self, word: &str) -> Result<Vec<Tag>, DictionaryError> {
+        Ok(self.parse(word)?.into_iter().map(|p| p.tag).collect())
+    }
+
+    /// Returns distinct normal forms in ranked analysis order.
+    pub fn normal_forms(&self, word: &str) -> Result<Vec<String>, DictionaryError> {
+        let mut seen = HashSet::new();
+        Ok(self
+            .parse(word)?
+            .into_iter()
+            .map(|p| p.normal_form)
+            .filter(|s| seen.insert(s.clone()))
+            .collect())
+    }
+
+    /// Tests dictionary membership after case, whitespace and е/ё normalization.
+    pub fn word_is_known(&self, word: &str) -> Result<bool, DictionaryError> {
+        Ok(!self.dictionary().parse(word)?.is_empty())
+    }
+
+    /// Resolves the normal form, preferring the current part of speech.
+    pub fn normalized(&self, parse: &Parse) -> Result<Parse, DictionaryError> {
+        if parse.word == parse.normal_form {
+            return Ok(parse.clone());
+        }
+        let parses = self.parse(&parse.normal_form)?;
+        if let Some(result) = parses
+            .iter()
+            .find(|p| p.tag.pos == parse.tag.pos)
+            .or(parses.first())
+        {
+            return Ok(result.clone());
+        }
+        let mut result = parse.clone();
+        result.word.clone_from(&result.normal_form);
+        Ok(result)
+    }
+
+    /// Expands a parse from this dictionary in paradigm order, preserving duplicates.
+    /// Synthetic analyses without a paradigm return only the supplied form.
+    pub fn lexeme(&self, parse: &Parse) -> Result<Vec<Parse>, InflectionError> {
+        inflection::lexeme(self.dictionary(), parse)
+    }
+
+    /// Selects a form satisfying all features, then maximizes similarity to the source.
+    /// Rare cases are mapped to common cases only if no exact candidate exists.
+    pub fn inflect<I, S>(
+        &self,
+        parse: &Parse,
+        required: I,
+    ) -> Result<Option<Parse>, InflectionError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let required: BTreeSet<String> = required
+            .into_iter()
+            .map(|g| g.as_ref().to_owned())
+            .collect();
+        inflection::inflect(self.dictionary(), parse, &required)
+    }
+
+    /// Selects sing/nomn, sing/gent or plur/gent using the last decimal digits.
+    /// Negative counts use Euclidean remainders, without taking an absolute value.
+    pub fn make_agree_with_number(
+        &self,
+        parse: &Parse,
+        number: i64,
+    ) -> Result<Option<Parse>, InflectionError> {
+        self.inflect(parse, inflection::grammemes(number))
+    }
+}

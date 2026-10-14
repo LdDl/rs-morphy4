@@ -4,4 +4,4 @@ mod tag;
 
 pub use tag::Tag;
 
-pub use analysis::{DictionaryAnalyzer, MorphAnalyzer, Parse};
+pub use analysis::{CacheInfo, DictionaryAnalyzer, InflectionError, MorphAnalyzer, Parse};

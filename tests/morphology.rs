@@ -36,7 +36,7 @@ fn compare(group: &str) {
     let mut count = 0;
     for case in REFERENCE.cases.iter().filter(|c| c.group == group) {
         let actual: Vec<_> = ANALYZER
-            .parse(&case.input)
+            .parse_unranked(&case.input)
             .unwrap()
             .into_iter()
             .map(|p| Expected {
