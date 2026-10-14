@@ -90,9 +90,9 @@ impl DictionaryAnalyzer {
             normal_form,
             tag: self.tables.tags[usize::from(current.tag_id)].clone(),
             score: 1.0,
-            paradigm_id: record.paradigm_id,
-            form_index: record.form_index,
-            stem: stem.to_owned(),
+            paradigm_id: Some(record.paradigm_id),
+            form_index: Some(record.form_index),
+            stem: Some(stem.to_owned()),
         })
     }
 }

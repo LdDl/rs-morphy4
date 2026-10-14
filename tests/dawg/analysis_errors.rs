@@ -34,7 +34,7 @@ fn loaded_analyzer_works_without_prediction_files_or_source_directory() {
     let parses = analyzer.parse("ЁЛКА").unwrap();
     assert_eq!(parses.len(), 1);
     assert_eq!(parses[0].normal_form, "ёлка");
-    assert_eq!(parses[0].stem, "ёл");
+    assert_eq!(parses[0].stem.as_deref(), Some("ёл"));
 }
 
 #[test]

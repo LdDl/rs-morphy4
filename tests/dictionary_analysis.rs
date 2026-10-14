@@ -67,8 +67,8 @@ fn comparable(parses: Vec<Parse>) -> Vec<ExpectedParse> {
             pos: p.tag.pos,
             grammemes: p.tag.grammemes,
             score: p.score,
-            paradigm_id: p.paradigm_id,
-            stem: p.stem,
+            paradigm_id: p.paradigm_id.unwrap(),
+            stem: p.stem.unwrap(),
         })
         .collect()
 }
@@ -109,7 +109,7 @@ fn word_records_preserve_reference_order_and_duplicates() {
         assert_eq!(
             exact
                 .iter()
-                .map(|p| [p.paradigm_id, p.form_index])
+                .map(|p| [p.paradigm_id.unwrap(), p.form_index.unwrap()])
                 .collect::<Vec<_>>(),
             actual
         );
