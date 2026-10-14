@@ -2,6 +2,12 @@
 name = "rs-morphy4"
 version = "0.1.0"
 edition = "2024"
+authors = ["Lopanov Dmitrii (LdDl)"]
+description = "Russian morphological analysis and inflection with compiled OpenCorpora dictionaries"
+repository = "https://github.com/LdDl/rs-morphy4"
+readme = "README.md"
+keywords = ["morphology", "russian", "nlp", "opencorpora", "inflection"]
+categories = ["text-processing"]
 license = "Apache-2.0 AND MIT AND CC-BY-SA-3.0"
 
 [dependencies]
@@ -11,3 +17,7 @@ serde_json = "1"
 
 [dev-dependencies]
 tempfile = "3"
+
+[[bench]]
+name = "morphology"
+harness = false
