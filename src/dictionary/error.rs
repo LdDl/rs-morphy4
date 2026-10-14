@@ -1,3 +1,4 @@
+use super::BinaryError;
 use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -5,6 +6,7 @@ use std::path::{Path, PathBuf};
 /// A dictionary file could not be read, decoded or validated.
 #[derive(Debug)]
 pub enum DictionaryError {
+    BinaryError { path: PathBuf, source: BinaryError },
     IoError {
         path: PathBuf,
         source: std::io::Error,
@@ -36,6 +38,10 @@ pub enum ValidationError {
 }
 
 impl DictionaryError {
+    pub(crate) fn binary(path: &Path, source: BinaryError) -> Self {
+        Self::BinaryError { path: path.to_owned(), source }
+    }
+
     pub(crate) fn invalid(path: &Path, reason: ValidationError) -> Self {
         Self::InvalidData {
             path: path.to_owned(),
@@ -61,6 +67,9 @@ impl fmt::Display for DictionaryError {
                     path.display()
                 )
             }
+            Self::BinaryError { path, source } => {
+                write!(f, "invalid binary dictionary {}: {source}", path.display())
+            }
             Self::InvalidData { path, reason } => {
                 write!(f, "invalid dictionary file {}: {reason}", path.display())
             }
@@ -71,6 +80,7 @@ impl fmt::Display for DictionaryError {
 impl Error for DictionaryError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::BinaryError { source, .. } => Some(source),
             Self::IoError { source, .. } => Some(source),
             Self::ParseError { source, .. } => Some(source),
             Self::InvalidData { reason, .. } => Some(reason),
