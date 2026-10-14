@@ -17,5 +17,9 @@ pymorphy3: Copyright (c) 2022 (continuation of pymorphy2).
 Maintainers: Danylo Halaiko, insolor and contributors.
 https://github.com/no-plagiarism/pymorphy3
 
-OpenCorpora dictionary data is not included in this package. The source
-project identifies its dictionary data license as CC BY-SA 3.0.
+The dictionary in data/dicts_ru originates from OpenCorpora and is distributed
+under CC BY-SA 3.0. Attribution: OpenCorpora contributors; distribution source:
+MAWO Team's mawo-pymorphy3. The files are included without changes.
+Source: https://opencorpora.org/
+License: https://creativecommons.org/licenses/by-sa/3.0/
+The pinned distribution source and license text are documented in data/README.md.

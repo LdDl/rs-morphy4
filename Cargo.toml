@@ -2,6 +2,6 @@
 name = "rs-morphy4"
 version = "0.1.0"
 edition = "2024"
-license = "Apache-2.0 AND MIT"
+license = "Apache-2.0 AND MIT AND CC-BY-SA-3.0"
 
 [dependencies]
