@@ -120,7 +120,7 @@ fn dictionary_mode_stays_independent_from_prediction() {
 
 #[test]
 fn inflection_patterns_can_return_multiple_analyses() {
-    let parses = ANALYZER.parse("ѯой").unwrap();
+    let parses = ANALYZER.parse_unranked("ѯой").unwrap();
     assert_eq!(parses.len(), 2);
     assert_eq!(
         (
