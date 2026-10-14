@@ -18,3 +18,21 @@ pub fn rank(parses: &mut [Parse]) {
         )
     });
 }
+
+/// Orders by word/tag frequency, retaining the heuristic order for equal frequencies.
+pub fn statistical(
+    word: &str,
+    parses: Vec<Parse>,
+    model: &crate::dictionary::WordTagProbabilities,
+) -> Result<Vec<Parse>, crate::dictionary::DictionaryError> {
+    let mut weighted = parses
+        .into_iter()
+        .map(|parse| {
+            model
+                .frequency(word, &parse.tag)
+                .map(|frequency| (frequency, parse))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    weighted.sort_by_key(|(frequency, _)| std::cmp::Reverse(*frequency));
+    Ok(weighted.into_iter().map(|(_, parse)| parse).collect())
+}

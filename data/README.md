@@ -21,3 +21,9 @@ SHA-256 checksums are recorded in `SHA256SUMS`. Verification from this directory
 ```sh
 sha256sum -c SHA256SUMS
 ```
+
+## Word/tag frequencies
+
+`probabilities_ru/` contains `p_t_given_w.intdawg`, `gramtab-opencorpora-int.json` and `meta.json` copied unchanged from [pymorphy3-dicts-ru 2.4.417150.4580142](https://pypi.org/project/pymorphy3-dicts-ru/2.4.417150.4580142/). Distribution maintainer: Danylo Halaiko and contributors. The data originates from OpenCorpora contributors and is distributed under CC BY-SA 3.0. Dictionary revision: 417150; annotated corpus revision: 4580142. This is a separate source from `dicts_ru`, whose revision is 417260.
+
+The integer DAWG stores probabilities in millionths for `word:tag` keys. Tags are matched by part of speech and the complete set of grammatical features. Equivalent tag spellings use the maximum stored value. Absent entries have frequency zero. The model and tag table are embedded; runtime downloads and files are not required. These frequencies do not encode sentence context.

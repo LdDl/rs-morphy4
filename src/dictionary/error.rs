@@ -39,6 +39,16 @@ pub enum DictionaryError {
 /// A violated constraint in a dictionary file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
+    /// A probability-model tag is empty or has an invalid key delimiter.
+    InvalidProbabilityTag {
+        /// Tag table index.
+        index: usize,
+    },
+    /// An integer probability exceeds the fixed-point scale.
+    InvalidProbability {
+        /// Observed value in millionths.
+        value: u32,
+    },
     /// Metadata has no filename for the required tag format.
     MissingTable {
         /// Required tag notation.
@@ -159,6 +169,12 @@ impl Error for DictionaryError {
 impl fmt::Display for ValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidProbabilityTag { index } => {
+                write!(f, "invalid probability tag at index {index}")
+            }
+            Self::InvalidProbability { value } => {
+                write!(f, "probability {value} exceeds 1000000 millionths")
+            }
             Self::MissingTable { format } => {
                 write!(f, "missing {format} table filename")
             }

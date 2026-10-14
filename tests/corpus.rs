@@ -37,7 +37,7 @@ impl From<Parse> for Analysis {
 }
 
 #[test]
-fn ranked_corpus_matches_reference() {
+fn heuristic_ranked_corpus_matches_reference() {
     let corpus: Corpus = serde_json::from_str(include_str!("fixtures/corpus.json")).unwrap();
     let inputs: Vec<String> =
         serde_json::from_str(include_str!("../benchmarks/corpus.json")).unwrap();
@@ -45,8 +45,9 @@ fn ranked_corpus_matches_reference() {
         corpus.cases.iter().map(|c| &c.input).collect::<Vec<_>>(),
         inputs.iter().collect::<Vec<_>>()
     );
-    let analyzer =
-        MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru")).unwrap();
+    let analyzer = MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru"))
+        .unwrap()
+        .with_probabilities(None);
     let mut mismatches = Vec::new();
     for case in corpus.cases {
         let actual: Vec<Analysis> = analyzer

@@ -1,5 +1,7 @@
 # Measurements
 
+These samples measure heuristic ranking. They predate the frequency model and do not describe its speed or memory use.
+
 My configuration for the benchmarks:
 
 ```text

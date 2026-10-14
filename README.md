@@ -59,15 +59,18 @@ The `tag`, `normal_forms` and `word_is_known` methods provide individual analysi
 
 ## Behavior
 
-It is simple. Leading and trailing whitespace is removed, and input is lowercased. Empty input produces no analyses. Stable result ordering is determined by whether the weight is below 1, part-of-speech priority, nominative case and feature count. The weight is not a probability (!!!); results are not sorted by descending numeric weight. `parse_unranked` preserves rule order and bypasses the cache.
+It is simple. Leading and trailing whitespace is removed, and input is lowercased. Empty input produces no analyses. `default`, `new` and `load` use the embedded word/tag frequencies to rank results. Equal or missing frequencies retain heuristic order: dictionary analyses, part of speech, nominative case, then feature count. `Parse.score` remains a rule weight, not a probability. `parse_unranked` preserves rule order and bypasses the cache.
 
-Analyzer clones share an immutable dictionary and a thread-safe FIFO cache. By default, it holds 1024 normalized tokens. `MorphAnalyzer::from_shared(morph.shared_dictionary(), capacity)` creates an analyzer with a separate cache; capacity 0 disables storage. Results are returned as independent copies. Concurrent cache misses may cause the same token to be computed more than once.
+`morph.with_probabilities(None)` disables statistical ranking. `morph.with_probabilities(Some(Arc::new(model)))` attaches a custom `WordTagProbabilities` loaded from integer DAWG bytes and a tag table. Model replacement creates an empty independent cache; existing clones keep their model and cache. The model uses exact grammatical features rather than paradigm identifiers, including for custom dictionaries.
+
+Analyzer clones share an immutable dictionary and a thread-safe FIFO cache. By default, it holds 1024 normalized tokens. `MorphAnalyzer::from_shared(morph.shared_dictionary(), capacity)` creates an analyzer with heuristic ranking and a separate cache; capacity 0 disables storage. Results are returned as independent copies. Concurrent cache misses may cause the same token to be computed more than once.
 
 Known limitations/assumptions:
 
 - Handling of the letters `е` and `ё` swaps all occurrences simultaneously under certain conditions; individual combinations of substitutions are not enumerated.
 - Unknown and compound words are handled by rules. Synthetic analyses without a paradigm have a lexeme containing one form.
 - Agreement with a negative number may produce a different word form than agreement with its positive counterpart: for example, `1 кошка`, but `-1 кошек`. This is a characteristic of the current `make_agree_with_number` algorithm.
+- Word/tag frequencies do not use sentence context. The first analysis can still be unsuitable for a particular sentence.
 - Table structure is checked during loading; DAWG transitions and records are checked when accessed.
 
 ## Examples and verification
@@ -82,7 +85,9 @@ cargo test --locked
 cargo doc --no-deps
 ```
 
-The final corpus check covers a set of inputs and ordered analyses. All compared fields matched the pinned reference on this corpus. For those interested, the [test description](tests/README.md) documents coverage and intentional differences.
+The heuristic-mode corpus check preserves the pinned reference. Statistical ranking is checked separately against fixed-point frequency values and expected first lemmas. For those interested, the [test description](tests/README.md) documents coverage and intentional differences.
+
+The measurements below cover heuristic ranking before the frequency model was added; they do not measure statistical ranking.
 
 My configuration for the benchmarks:
 

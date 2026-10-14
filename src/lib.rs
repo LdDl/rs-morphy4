@@ -1,7 +1,8 @@
 //! Russian morphological analysis and inflection with compiled OpenCorpora dictionaries.
 //!
 //! The Russian dictionary is embedded in the binary; an external dictionary can also be loaded.
-//! Analyzer clones share both the dictionary and a bounded result cache.
+//! Word/tag frequencies rank results; equal frequencies retain stable heuristic ordering.
+//! Analyzer clones share the dictionary, frequency model and a bounded result cache.
 //!
 //! ```
 //! use rs_morphy4::MorphAnalyzer;
@@ -27,4 +28,4 @@ pub use tag::Tag;
 
 pub use analysis::{CacheInfo, DictionaryAnalyzer, InflectionError, MorphAnalyzer, Parse};
 
-pub use dictionary::DictionaryData;
+pub use dictionary::{DictionaryData, WordTagProbabilities};

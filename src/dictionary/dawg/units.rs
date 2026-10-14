@@ -37,3 +37,9 @@ pub fn validate_leaf(units: &[u32], index: usize) -> Result<(), BinaryError> {
     }
     Ok(())
 }
+
+pub fn value(units: &[u32], index: usize) -> Result<u32, BinaryError> {
+    validate_leaf(units, index)?;
+    let next = index ^ offset(unit(units, index)?) as usize;
+    Ok(unit(units, next)? & !LEAF_BIT)
+}

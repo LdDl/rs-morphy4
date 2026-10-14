@@ -6,7 +6,9 @@ use rs_morphy4::{InflectionError, MorphAnalyzer, Parse};
 use serde::Deserialize;
 
 static ANALYZER: LazyLock<MorphAnalyzer> = LazyLock::new(|| {
-    MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru")).unwrap()
+    MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru"))
+        .unwrap()
+        .with_probabilities(None)
 });
 static REFERENCE: LazyLock<Reference> =
     LazyLock::new(|| serde_json::from_str(include_str!("fixtures/inflection.json")).unwrap());

@@ -16,3 +16,7 @@ pub use paradigm::{Paradigm, ParadigmForm, Paradigms};
 pub use tables::DictionaryTables;
 
 pub use data::DictionaryData;
+
+mod probabilities;
+mod probability_tags;
+pub use probabilities::WordTagProbabilities;
