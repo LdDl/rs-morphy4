@@ -85,3 +85,90 @@ fn normalization_preserves_input_and_unrecognized_features() {
 fn normalization_preserves_an_empty_set() {
     assert!(Tag::fix_rare_cases(&BTreeSet::new()).is_empty());
 }
+
+fn properties(tag: &Tag) -> [Option<&str>; 5] {
+    [
+        tag.case(),
+        tag.number(),
+        tag.gender(),
+        tag.aspect(),
+        tag.tense(),
+    ]
+}
+
+#[test]
+fn each_feature_belongs_to_its_category() {
+    for (category, values) in [
+        &["nomn", "gent", "datv", "accs", "ablt", "loct", "voct"][..],
+        &["sing", "plur"],
+        &["masc", "femn", "neut"],
+        &["perf", "impf"],
+        &["past", "pres", "futr"],
+    ]
+    .iter()
+    .enumerate()
+    {
+        for value in *values {
+            let tag = Tag::new("UNKN", [*value, "Custom"]);
+            let mut expected = [None; 5];
+            expected[category] = Some(*value);
+            assert_eq!(properties(&tag), expected, "{value}");
+        }
+    }
+}
+
+#[test]
+fn grammatical_properties_are_independent_of_pos() {
+    let tag = Tag::new("VERB", ["sing", "masc", "perf", "past", "tran"]);
+    assert_eq!(
+        properties(&tag),
+        [None, Some("sing"), Some("masc"), Some("perf"), Some("past")]
+    );
+    let pos_only = Tag::new("sing", Vec::<String>::new());
+    assert!(pos_only.contains("sing"));
+    assert_eq!(properties(&pos_only), [None; 5]);
+}
+
+#[test]
+fn absent_and_unrecognized_properties_are_none() {
+    assert_eq!(properties(&Tag::default()), [None; 5]);
+    let tag = Tag::new("NOUN", ["Nomn", "Sing", "MASC", "Perf", "Past", "Custom"]);
+    assert_eq!(properties(&tag), [None; 5]);
+}
+
+#[test]
+fn rare_cases_require_explicit_normalization() {
+    for (rare, common) in [
+        ("gen1", "gent"),
+        ("gen2", "gent"),
+        ("acc1", "accs"),
+        ("acc2", "accs"),
+        ("loc1", "loct"),
+        ("loc2", "loct"),
+        ("voct", "nomn"),
+    ] {
+        let tag = Tag::new("NOUN", [rare]);
+        assert_eq!(tag.case(), (rare == "voct").then_some("voct"));
+        let normalized = Tag::new("NOUN", Tag::fix_rare_cases(&tag.grammemes));
+        assert_eq!(normalized.case(), Some(common));
+        assert!(tag.contains(rare));
+    }
+}
+
+#[test]
+fn conflicting_properties_use_lexicographic_order() {
+    let values = [
+        "nomn", "gent", "sing", "plur", "masc", "femn", "perf", "impf", "pres", "past",
+    ];
+    let forward = Tag::new("NOUN", values);
+    let reversed = Tag::new("NOUN", values.into_iter().rev());
+    let expected = [
+        Some("gent"),
+        Some("plur"),
+        Some("femn"),
+        Some("impf"),
+        Some("past"),
+    ];
+    assert_eq!(properties(&forward), expected);
+    assert_eq!(properties(&reversed), expected);
+}

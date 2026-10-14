@@ -2,6 +2,9 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 /// A part of speech and a set of grammatical features.
+///
+/// Feature accessors return the lexicographically first recognized value when
+/// the set contains conflicting values of the same category.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tag {
     pub pos: String,
@@ -24,6 +27,38 @@ impl Tag {
     /// Reports membership in the feature set or equality with the part of speech.
     pub fn contains(&self, grammeme: &str) -> bool {
         self.pos == grammeme || self.grammemes.contains(grammeme)
+    }
+
+    /// Returns the grammatical case without normalizing rare cases.
+    pub fn case(&self) -> Option<&str> {
+        self.feature(&["nomn", "gent", "datv", "accs", "ablt", "loct", "voct"])
+    }
+
+    /// Returns singular or plural number.
+    pub fn number(&self) -> Option<&str> {
+        self.feature(&["sing", "plur"])
+    }
+
+    /// Returns masculine, feminine or neuter gender.
+    pub fn gender(&self) -> Option<&str> {
+        self.feature(&["masc", "femn", "neut"])
+    }
+
+    /// Returns perfective or imperfective aspect.
+    pub fn aspect(&self) -> Option<&str> {
+        self.feature(&["perf", "impf"])
+    }
+
+    /// Returns past, present or future tense.
+    pub fn tense(&self) -> Option<&str> {
+        self.feature(&["past", "pres", "futr"])
+    }
+
+    fn feature(&self, values: &[&str]) -> Option<&str> {
+        self.grammemes
+            .iter()
+            .map(String::as_str)
+            .find(|value| values.contains(value))
     }
 
     /// Returns a feature set with rare cases replaced by their common forms.
