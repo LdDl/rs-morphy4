@@ -39,15 +39,33 @@ impl From<Parse> for Analysis {
 #[test]
 fn ranked_corpus_matches_reference() {
     let corpus: Corpus = serde_json::from_str(include_str!("fixtures/corpus.json")).unwrap();
-    let inputs: Vec<String> = serde_json::from_str(include_str!("../benchmarks/corpus.json")).unwrap();
-    assert_eq!(corpus.cases.iter().map(|c| &c.input).collect::<Vec<_>>(), inputs.iter().collect::<Vec<_>>());
-    let analyzer = MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru")).unwrap();
+    let inputs: Vec<String> =
+        serde_json::from_str(include_str!("../benchmarks/corpus.json")).unwrap();
+    assert_eq!(
+        corpus.cases.iter().map(|c| &c.input).collect::<Vec<_>>(),
+        inputs.iter().collect::<Vec<_>>()
+    );
+    let analyzer =
+        MorphAnalyzer::load(Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru")).unwrap();
     let mut mismatches = Vec::new();
     for case in corpus.cases {
-        let actual: Vec<Analysis> = analyzer.parse(&case.input).unwrap().into_iter().map(Into::into).collect();
+        let actual: Vec<Analysis> = analyzer
+            .parse(&case.input)
+            .unwrap()
+            .into_iter()
+            .map(Into::into)
+            .collect();
         if actual != case.expected {
-            mismatches.push(format!("{:?}\nactual: {:?}\nexpected: {:?}", case.input, actual, case.expected));
+            mismatches.push(format!(
+                "{:?}\nactual: {:?}\nexpected: {:?}",
+                case.input, actual, case.expected
+            ));
         }
     }
-    assert!(mismatches.is_empty(), "{} mismatches:\n{}", mismatches.len(), mismatches.join("\n"));
+    assert!(
+        mismatches.is_empty(),
+        "{} mismatches:\n{}",
+        mismatches.len(),
+        mismatches.join("\n")
+    );
 }

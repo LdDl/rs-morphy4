@@ -6,7 +6,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let word = args.next().unwrap_or_else(|| "стали".into());
     let analyzer = MorphAnalyzer::load(directory)?;
     for parse in analyzer.parse(&word)? {
-        println!("{}\t{}\t{}\t{}", parse.word, parse.normal_form, parse.tag, parse.score);
+        println!(
+            "{}\t{}\t{}\t{}",
+            parse.word, parse.normal_form, parse.tag, parse.score
+        );
     }
     Ok(())
 }
