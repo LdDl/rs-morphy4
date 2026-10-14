@@ -1,1 +1,3 @@
 /target/
+# bunch of scripts that generate synthetic data for benchmarking
+gen_synth
