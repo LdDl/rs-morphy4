@@ -1,12 +1,12 @@
 //! Russian morphological analysis and inflection with compiled OpenCorpora dictionaries.
 //!
-//! The dictionary is loaded from an explicit directory and retained in memory.
+//! The Russian dictionary is embedded in the binary; an external dictionary can also be loaded.
 //! Analyzer clones share both the dictionary and a bounded result cache.
 //!
 //! ```
 //! use rs_morphy4::MorphAnalyzer;
 //!
-//! let morph = MorphAnalyzer::load("data/dicts_ru")?;
+//! let morph = MorphAnalyzer::default();
 //! let parses = morph.parse("кошки")?;
 //! assert_eq!(parses[0].normal_form, "кошка");
 //! let form = morph.inflect(&parses[0], ["plur", "gent"])?;
@@ -26,3 +26,5 @@ mod tag;
 pub use tag::Tag;
 
 pub use analysis::{CacheInfo, DictionaryAnalyzer, InflectionError, MorphAnalyzer, Parse};
+
+pub use dictionary::DictionaryData;

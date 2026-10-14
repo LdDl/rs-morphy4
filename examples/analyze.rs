@@ -1,10 +1,8 @@
 use rs_morphy4::MorphAnalyzer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = std::env::args().skip(1);
-    let directory = args.next().unwrap_or_else(|| "data/dicts_ru".into());
-    let word = args.next().unwrap_or_else(|| "стали".into());
-    let analyzer = MorphAnalyzer::load(directory)?;
+    let word = std::env::args().nth(1).unwrap_or_else(|| "стали".into());
+    let analyzer = MorphAnalyzer::default();
     for parse in analyzer.parse(&word)? {
         println!(
             "{}\t{}\t{}\t{}",

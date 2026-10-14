@@ -1,10 +1,7 @@
 use rs_morphy4::MorphAnalyzer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let directory = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "data/dicts_ru".into());
-    let analyzer = MorphAnalyzer::load(directory)?;
+    let analyzer = MorphAnalyzer::default();
     if let Some(parse) = analyzer.parse("кошка")?.first() {
         if let Some(form) = analyzer.inflect(parse, ["plur", "gent"])? {
             println!("{}", form.word);

@@ -44,7 +44,26 @@ impl Paradigms {
     ) -> Result<Self, DictionaryError> {
         let path = path.as_ref();
         let bytes = file::read(path)?;
-        Self::decode(&bytes, tables).map_err(|source| DictionaryError::binary(path, source))
+        Self::from_bytes(&bytes, tables, path)
+    }
+
+    /// Decodes and validates the bundled paradigms against the supplied tables.
+    pub fn embedded(tables: &DictionaryTables) -> Result<Self, DictionaryError> {
+        Self::from_bytes(
+            crate::dictionary::embedded::PARADIGMS,
+            tables,
+            "<memory>/paradigms.array",
+        )
+    }
+
+    /// Decodes bytes and validates all table references; source_path labels errors only.
+    pub fn from_bytes(
+        bytes: &[u8],
+        tables: &DictionaryTables,
+        source_path: impl AsRef<Path>,
+    ) -> Result<Self, DictionaryError> {
+        Self::decode(bytes, tables)
+            .map_err(|source| DictionaryError::binary(source_path.as_ref(), source))
     }
 
     /// Returns all paradigms in identifier order.

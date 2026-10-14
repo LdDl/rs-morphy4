@@ -1,14 +1,14 @@
 use std::collections::BTreeSet;
-use std::fs;
 use std::path::{Component, Path};
 
-use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
 use crate::tag::Tag;
 
+use crate::dictionary::data::DictionaryData;
 use crate::dictionary::error::{DictionaryError, ValidationError};
 use crate::dictionary::metadata::{Grammeme, Metadata};
+use crate::dictionary::source::{JsonTable, Source};
 
 /// Ordered tables whose indices are used by binary paradigms and DAWGs.
 #[derive(Debug)]
@@ -28,9 +28,22 @@ impl DictionaryTables {
     ///
     /// Binary paradigms and DAWGs are not read by this method.
     pub fn load(directory: impl AsRef<Path>) -> Result<Self, DictionaryError> {
-        let directory = directory.as_ref();
-        let metadata_path = directory.join("meta.json");
-        let metadata = read_metadata(&metadata_path)?;
+        Self::load_from(Source::Directory(directory.as_ref()))
+    }
+
+    /// Decodes and validates the bundled JSON tables without filesystem access.
+    pub fn embedded() -> Result<Self, DictionaryError> {
+        Self::from_data(DictionaryData::bundled())
+    }
+
+    /// Decodes caller-provided JSON tables using the same validation as directory loading.
+    pub fn from_data(data: DictionaryData<'_>) -> Result<Self, DictionaryError> {
+        Self::load_from(Source::Memory(data))
+    }
+
+    fn load_from(source: Source<'_>) -> Result<Self, DictionaryError> {
+        let metadata_path = source.path("meta.json");
+        let metadata = read_metadata(&source, &metadata_path)?;
         let gramtab_name = metadata
             .gramtab_formats
             .get("opencorpora-int")
@@ -52,8 +65,8 @@ impl DictionaryTables {
             ));
         }
 
-        let grammemes_path = directory.join("grammemes.json");
-        let grammemes: Vec<Grammeme> = read_json(&grammemes_path)?;
+        let grammemes_path = source.path("grammemes.json");
+        let grammemes: Vec<Grammeme> = source.json(&grammemes_path, JsonTable::Grammemes)?;
         let mut names = BTreeSet::new();
         for grammeme in &grammemes {
             if grammeme.name.is_empty() {
@@ -83,8 +96,8 @@ impl DictionaryTables {
             }
         }
 
-        let gramtab_path = directory.join(gramtab_name);
-        let entries: Vec<String> = read_json(&gramtab_path)?;
+        let gramtab_path = source.path(gramtab_name);
+        let entries: Vec<String> = source.json(&gramtab_path, JsonTable::Tags)?;
         check_length(&gramtab_path, entries.len(), metadata.gramtab_length)?;
         let mut tags = Vec::with_capacity(entries.len());
         for (index, entry) in entries.iter().enumerate() {
@@ -107,8 +120,8 @@ impl DictionaryTables {
             tags.push(tag);
         }
 
-        let suffixes_path = directory.join("suffixes.json");
-        let suffixes: Vec<String> = read_json(&suffixes_path)?;
+        let suffixes_path = source.path("suffixes.json");
+        let suffixes: Vec<String> = source.json(&suffixes_path, JsonTable::Suffixes)?;
         check_length(&suffixes_path, suffixes.len(), metadata.suffixes_length)?;
         Ok(Self {
             metadata,
@@ -119,19 +132,8 @@ impl DictionaryTables {
     }
 }
 
-fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, DictionaryError> {
-    let content = fs::read_to_string(path).map_err(|source| DictionaryError::IoError {
-        path: path.to_owned(),
-        source,
-    })?;
-    serde_json::from_str(&content).map_err(|source| DictionaryError::ParseError {
-        path: path.to_owned(),
-        source,
-    })
-}
-
-fn read_metadata(path: &Path) -> Result<Metadata, DictionaryError> {
-    let pairs: Vec<(String, Value)> = read_json(path)?;
+fn read_metadata(source: &Source<'_>, path: &Path) -> Result<Metadata, DictionaryError> {
+    let pairs: Vec<(String, Value)> = source.json(path, JsonTable::Metadata)?;
     let mut fields = Map::new();
     for (key, value) in pairs {
         if fields.insert(key.clone(), value).is_some() {

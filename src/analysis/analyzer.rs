@@ -7,7 +7,7 @@ use crate::analysis::normalization;
 use crate::analysis::parse::Parse;
 use crate::analysis::ranking;
 use crate::analysis::word;
-use crate::dictionary::DictionaryError;
+use crate::dictionary::{DictionaryData, DictionaryError};
 
 /// Clones share an immutable dictionary and a bounded, thread-safe result cache.
 #[derive(Debug, Clone)]
@@ -17,6 +17,18 @@ pub struct MorphAnalyzer {
 }
 
 impl MorphAnalyzer {
+    /// Creates an analyzer from caller-provided dictionary bytes with a 1024-token FIFO cache.
+    /// The bytes may be embedded with include_bytes! or borrowed from runtime buffers.
+    ///
+    /// # Errors
+    /// Returns an error for malformed or unsupported dictionary data.
+    pub fn new(data: DictionaryData<'_>) -> Result<Self, DictionaryError> {
+        Ok(Self::from_shared(
+            Arc::new(DictionaryAnalyzer::from_data(data)?),
+            1024,
+        ))
+    }
+
     /// Loads a dictionary with a FIFO cache of at most 1024 normalized tokens.
     ///
     /// # Errors
@@ -83,5 +95,16 @@ impl MorphAnalyzer {
     /// An already running parse can repopulate the cache after this call.
     pub fn clear_cache(&self) {
         self.cache.clear();
+    }
+}
+
+impl Default for MorphAnalyzer {
+    /// Creates an analyzer with the bundled Russian dictionary and a 1024-token FIFO cache.
+    /// No runtime files or network access are needed.
+    ///
+    /// # Panics
+    /// Panics if the library's bundled dictionary is invalid.
+    fn default() -> Self {
+        Self::new(DictionaryData::bundled()).expect("bundled dictionary must be valid")
     }
 }

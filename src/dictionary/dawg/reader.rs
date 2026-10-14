@@ -20,8 +20,18 @@ impl<R: DawgRecord> RecordDawg<R> {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, DictionaryError> {
         let path = path.as_ref();
         let bytes = file::read(path)?;
+        Self::from_bytes(&bytes, path)
+    }
+
+    /// Decodes an in-memory DAWG; the supplied path labels errors and is never opened.
+    /// Traversed edges and payloads are checked during lookup.
+    pub fn from_bytes(
+        bytes: &[u8],
+        source_path: impl AsRef<Path>,
+    ) -> Result<Self, DictionaryError> {
+        let path = source_path.as_ref();
         let storage =
-            Storage::decode(&bytes).map_err(|source| DictionaryError::binary(path, source))?;
+            Storage::decode(bytes).map_err(|source| DictionaryError::binary(path, source))?;
         Ok(Self {
             path: path.to_owned(),
             storage,
@@ -36,5 +46,12 @@ impl<R: DawgRecord> RecordDawg<R> {
         self.storage
             .lookup(key)
             .map_err(|source| DictionaryError::binary(&self.path, source))
+    }
+}
+
+impl RecordDawg<crate::dictionary::dawg::records::WordRecord> {
+    /// Decodes the bundled word DAWG without filesystem access.
+    pub fn embedded() -> Result<Self, DictionaryError> {
+        Self::from_bytes(crate::dictionary::embedded::WORDS, "<embedded>/words.dawg")
     }
 }

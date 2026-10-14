@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use crate::analysis::parse::Parse;
 use crate::dictionary::dawg::{RecordDawg, WordRecord};
-use crate::dictionary::{BinaryError, DictionaryError, DictionaryTables, Paradigms, TableKind};
+use crate::dictionary::{
+    BinaryError, DictionaryData, DictionaryError, DictionaryTables, Paradigms, TableKind,
+};
 
 #[derive(Debug)]
 /// In-memory dictionary lookup without prediction or special-token rules.
@@ -14,6 +16,27 @@ pub struct DictionaryAnalyzer {
 }
 
 impl DictionaryAnalyzer {
+    /// Loads the bundled Russian dictionary entirely from embedded bytes.
+    /// Invalid bundled tables or binary structures return a dictionary error.
+    pub fn embedded() -> Result<Self, DictionaryError> {
+        Self::from_data(DictionaryData::bundled())
+    }
+
+    /// Decodes a caller-provided dictionary without filesystem access.
+    /// Malformed or unsupported data returns a typed error; input bytes are not retained.
+    pub fn from_data(data: DictionaryData<'_>) -> Result<Self, DictionaryError> {
+        let tables = DictionaryTables::from_data(data)?;
+        let paradigms = Paradigms::from_bytes(data.paradigms, &tables, "<memory>/paradigms.array")?;
+        let words_path = PathBuf::from("<memory>/words.dawg");
+        let words = RecordDawg::from_bytes(data.words, &words_path)?;
+        Ok(Self {
+            tables,
+            paradigms,
+            words,
+            words_path,
+        })
+    }
+
     /// Loads JSON tables, paradigms and words. Prediction files are not required.
     pub fn load(directory: impl AsRef<Path>) -> Result<Self, DictionaryError> {
         let directory = directory.as_ref();
