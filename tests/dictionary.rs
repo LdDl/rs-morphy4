@@ -1,7 +1,8 @@
+use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use rs_morphy4::dictionary::{DictionaryError, DictionaryTables};
+use rs_morphy4::dictionary::{DictionaryError, DictionaryTables, ValidationError};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
@@ -42,16 +43,13 @@ fn set_metadata(directory: &Path, key: &str, value: Value) {
     write_json(directory, "meta.json", json!(pairs));
 }
 
-fn assert_invalid(directory: &Path, filename: &str, message: &str) {
+fn assert_invalid(directory: &Path, filename: &str, expected: ValidationError) {
     let error = DictionaryTables::load(directory).unwrap_err();
-    let DictionaryError::InvalidData(details) = error else {
+    let DictionaryError::InvalidData { path, reason } = error else {
         panic!("unexpected error: {error:?}");
     };
-    assert!(details.contains(message), "{details}");
-    assert!(
-        details.contains(directory.join(filename).to_str().unwrap()),
-        "{details}"
-    );
+    assert_eq!(path, directory.join(filename));
+    assert_eq!(reason, expected);
 }
 
 #[test]
@@ -109,29 +107,56 @@ fn metadata_table_filename_is_used() {
 
 #[test]
 fn metadata_rejects_unsupported_or_inconsistent_settings() {
-    for (key, value, message) in [
-        ("format_version", json!("2.5"), "unsupported format"),
-        ("language_code", json!("uk"), "unsupported language"),
-        ("gramtab_formats", json!({}), "missing opencorpora-int"),
+    for (key, value, expected) in [
+        (
+            "format_version",
+            json!("2.5"),
+            ValidationError::UnsupportedFormat {
+                found: "2.5".into(),
+                expected: "2.4".into(),
+            },
+        ),
+        (
+            "language_code",
+            json!("uk"),
+            ValidationError::UnsupportedLanguage {
+                found: "uk".into(),
+                expected: "ru".into(),
+            },
+        ),
+        (
+            "gramtab_formats",
+            json!({}),
+            ValidationError::MissingTable {
+                format: "opencorpora-int".into(),
+            },
+        ),
         (
             "gramtab_formats",
             json!({"opencorpora-int": "../tags.json"}),
-            "must be a filename",
+            ValidationError::InvalidTableFilename {
+                filename: "../tags.json".into(),
+            },
         ),
         (
             "gramtab_formats",
             json!({"opencorpora-int": "/tmp/tags.json"}),
-            "must be a filename",
+            ValidationError::InvalidTableFilename {
+                filename: "/tmp/tags.json".into(),
+            },
         ),
         (
             "prediction_suffixes_dawg_lengths",
             json!([10]),
-            "expected 3 entries",
+            ValidationError::LengthMismatch {
+                expected: 3,
+                actual: 1,
+            },
         ),
     ] {
         let directory = fixture();
         set_metadata(directory.path(), key, value);
-        assert_invalid(directory.path(), "meta.json", message);
+        assert_invalid(directory.path(), "meta.json", expected);
     }
 }
 
@@ -142,45 +167,69 @@ fn duplicate_metadata_keys_are_rejected() {
     let mut metadata: Vec<Value> = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
     metadata.push(json!(["source_revision", "other"]));
     write_json(directory.path(), "meta.json", json!(metadata));
-    assert_invalid(directory.path(), "meta.json", "duplicate metadata key");
+    assert_invalid(
+        directory.path(),
+        "meta.json",
+        ValidationError::DuplicateMetadataKey {
+            key: "source_revision".into(),
+        },
+    );
 }
 
 #[test]
 fn table_lengths_must_match_metadata() {
-    for (key, filename) in [
-        ("gramtab_length", "gramtab-opencorpora-int.json"),
-        ("suffixes_length", "suffixes.json"),
+    for (key, filename, actual) in [
+        ("gramtab_length", "gramtab-opencorpora-int.json", 2),
+        ("suffixes_length", "suffixes.json", 3),
     ] {
         let directory = fixture();
         set_metadata(directory.path(), key, json!(99));
-        assert_invalid(directory.path(), filename, "expected 99 entries");
+        assert_invalid(
+            directory.path(),
+            filename,
+            ValidationError::LengthMismatch {
+                expected: 99,
+                actual,
+            },
+        );
     }
 }
 
 #[test]
 fn grammeme_names_and_parent_references_are_validated() {
-    for (definitions, message) in [
-        (json!([["", "", "", ""]]), "empty or duplicate"),
+    for (definitions, expected) in [
+        (
+            json!([["", "", "", ""]]),
+            ValidationError::EmptyGrammemeName,
+        ),
         (
             json!([["NOUN", "", "", ""], ["NOUN", "", "", ""]]),
-            "empty or duplicate",
+            ValidationError::DuplicateGrammemeName {
+                name: "NOUN".into(),
+            },
         ),
-        (json!([["NOUN", "missing", "", ""]]), "unknown parent"),
+        (
+            json!([["NOUN", "missing", "", ""]]),
+            ValidationError::UnknownParent {
+                name: "NOUN".into(),
+                parent: "missing".into(),
+            },
+        ),
     ] {
         let directory = fixture();
         write_json(directory.path(), "grammemes.json", definitions);
-        assert_invalid(directory.path(), "grammemes.json", message);
+        assert_invalid(directory.path(), "grammemes.json", expected);
     }
 }
 
 #[test]
 fn tags_reject_unknown_pos_features_and_empty_components() {
-    for tag in [
-        "missing sing",
-        "NOUN missing",
-        "NOUN,,sing",
-        "",
-        "NOUN sing,",
+    for (tag, unknown) in [
+        ("missing sing", "missing"),
+        ("NOUN missing", "missing"),
+        ("NOUN,,sing", ""),
+        ("", ""),
+        ("NOUN sing,", ""),
     ] {
         let directory = fixture();
         write_json(
@@ -191,7 +240,10 @@ fn tags_reject_unknown_pos_features_and_empty_components() {
         assert_invalid(
             directory.path(),
             "gramtab-opencorpora-int.json",
-            "unknown or empty grammeme",
+            ValidationError::UnknownGrammeme {
+                name: unknown.into(),
+                tag_index: 0,
+            },
         );
     }
 }
@@ -207,14 +259,18 @@ fn file_errors_include_the_path_and_cause() {
         let directory = fixture();
         fs::remove_file(directory.path().join(filename)).unwrap();
         let error = DictionaryTables::load(directory.path()).unwrap_err();
-        let DictionaryError::IoError(details) = error else {
+        assert!(
+            error
+                .source()
+                .unwrap()
+                .downcast_ref::<std::io::Error>()
+                .is_some()
+        );
+        let DictionaryError::IoError { path, source } = error else {
             panic!("unexpected error: {error:?}");
         };
-        assert!(details.contains(directory.path().join(filename).to_str().unwrap()));
-        let cause = fs::read(directory.path().join(filename))
-            .unwrap_err()
-            .to_string();
-        assert!(details.contains(&cause), "{details}");
+        assert_eq!(path, directory.path().join(filename));
+        assert_eq!(source.kind(), std::io::ErrorKind::NotFound);
     }
 }
 
@@ -229,10 +285,17 @@ fn invalid_json_and_record_shapes_return_decode_errors() {
         let directory = fixture();
         fs::write(directory.path().join(filename), data).unwrap();
         let error = DictionaryTables::load(directory.path()).unwrap_err();
-        let DictionaryError::ParseError(details) = error else {
+        assert!(
+            error
+                .source()
+                .unwrap()
+                .downcast_ref::<serde_json::Error>()
+                .is_some()
+        );
+        let DictionaryError::ParseError { path, source } = error else {
             panic!("unexpected error: {error:?}");
         };
-        assert!(details.contains(directory.path().join(filename).to_str().unwrap()));
-        assert!(details.contains("line 1"), "{details}");
+        assert_eq!(path, directory.path().join(filename));
+        assert_eq!(source.line(), 1);
     }
 }

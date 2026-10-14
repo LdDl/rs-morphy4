@@ -12,7 +12,7 @@ use serde_json::{Map, Value};
 
 use crate::Tag;
 
-pub use error::DictionaryError;
+pub use error::{DictionaryError, ValidationError};
 pub use metadata::{CompileOptions, Grammeme, Metadata};
 
 /// Ordered tables whose indices are used by binary paradigms and DAWGs.
@@ -36,33 +36,50 @@ impl DictionaryTables {
             .gramtab_formats
             .get("opencorpora-int")
             .ok_or_else(|| {
-                DictionaryError::invalid(&metadata_path, "missing opencorpora-int table filename")
+                DictionaryError::invalid(
+                    &metadata_path,
+                    ValidationError::MissingTable {
+                        format: "opencorpora-int".into(),
+                    },
+                )
             })?;
         let mut components = Path::new(gramtab_name).components();
         if !matches!(components.next(), Some(Component::Normal(_))) || components.next().is_some() {
             return Err(DictionaryError::invalid(
                 &metadata_path,
-                "opencorpora-int table must be a filename within the dictionary directory",
+                ValidationError::InvalidTableFilename {
+                    filename: gramtab_name.clone(),
+                },
             ));
         }
 
         let grammemes_path = directory.join("grammemes.json");
         let grammemes: Vec<Grammeme> = read_json(&grammemes_path)?;
-        let names: BTreeSet<&str> = grammemes.iter().map(|g| g.name.as_str()).collect();
-        if names.contains("") || names.len() != grammemes.len() {
-            return Err(DictionaryError::invalid(
-                &grammemes_path,
-                "empty or duplicate grammeme name",
-            ));
+        let mut names = BTreeSet::new();
+        for grammeme in &grammemes {
+            if grammeme.name.is_empty() {
+                return Err(DictionaryError::invalid(
+                    &grammemes_path,
+                    ValidationError::EmptyGrammemeName,
+                ));
+            }
+            if !names.insert(grammeme.name.as_str()) {
+                return Err(DictionaryError::invalid(
+                    &grammemes_path,
+                    ValidationError::DuplicateGrammemeName {
+                        name: grammeme.name.clone(),
+                    },
+                ));
+            }
         }
         for grammeme in &grammemes {
             if !grammeme.parent.is_empty() && !names.contains(grammeme.parent.as_str()) {
                 return Err(DictionaryError::invalid(
                     &grammemes_path,
-                    format!(
-                        "unknown parent {:?} of grammeme {:?}",
-                        grammeme.parent, grammeme.name
-                    ),
+                    ValidationError::UnknownParent {
+                        name: grammeme.name.clone(),
+                        parent: grammeme.parent.clone(),
+                    },
                 ));
             }
         }
@@ -81,7 +98,10 @@ impl DictionaryTables {
                 if !names.contains(name) {
                     return Err(DictionaryError::invalid(
                         &gramtab_path,
-                        format!("unknown or empty grammeme {name:?} in tag {index}"),
+                        ValidationError::UnknownGrammeme {
+                            name: name.to_owned(),
+                            tag_index: index,
+                        },
                     ));
                 }
             }
@@ -101,17 +121,13 @@ impl DictionaryTables {
 }
 
 fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, DictionaryError> {
-    let content = fs::read_to_string(path).map_err(|error| {
-        DictionaryError::IoError(format!(
-            "cannot read dictionary file {}: {error}",
-            path.display()
-        ))
+    let content = fs::read_to_string(path).map_err(|source| DictionaryError::IoError {
+        path: path.to_owned(),
+        source,
     })?;
-    serde_json::from_str(&content).map_err(|error| {
-        DictionaryError::ParseError(format!(
-            "cannot parse dictionary file {}: {error}",
-            path.display()
-        ))
+    serde_json::from_str(&content).map_err(|source| DictionaryError::ParseError {
+        path: path.to_owned(),
+        source,
     })
 }
 
@@ -122,38 +138,38 @@ fn read_metadata(path: &Path) -> Result<Metadata, DictionaryError> {
         if fields.insert(key.clone(), value).is_some() {
             return Err(DictionaryError::invalid(
                 path,
-                format!("duplicate metadata key {key:?}"),
+                ValidationError::DuplicateMetadataKey { key },
             ));
         }
     }
-    let metadata: Metadata = serde_json::from_value(Value::Object(fields)).map_err(|error| {
-        DictionaryError::ParseError(format!(
-            "cannot parse dictionary file {}: {error}",
-            path.display()
-        ))
+    let metadata: Metadata = serde_json::from_value(Value::Object(fields)).map_err(|source| {
+        DictionaryError::ParseError {
+            path: path.to_owned(),
+            source,
+        }
     })?;
     if metadata.format_version != "2.4" {
         return Err(DictionaryError::invalid(
             path,
-            format!(
-                "unsupported format {:?}; expected 2.4",
-                metadata.format_version
-            ),
+            ValidationError::UnsupportedFormat {
+                found: metadata.format_version,
+                expected: "2.4".into(),
+            },
         ));
     }
     if metadata.language_code != "ru" {
         return Err(DictionaryError::invalid(
             path,
-            format!(
-                "unsupported language {:?}; expected ru",
-                metadata.language_code
-            ),
+            ValidationError::UnsupportedLanguage {
+                found: metadata.language_code,
+                expected: "ru".into(),
+            },
         ));
     }
     if metadata.compile_options.paradigm_prefixes.is_empty() {
         return Err(DictionaryError::invalid(
             path,
-            "paradigm prefixes are empty",
+            ValidationError::EmptyParadigmPrefixes,
         ));
     }
     check_length(
@@ -168,7 +184,7 @@ fn check_length(path: &Path, actual: usize, expected: usize) -> Result<(), Dicti
     if actual != expected {
         return Err(DictionaryError::invalid(
             path,
-            format!("expected {expected} entries, found {actual}"),
+            ValidationError::LengthMismatch { expected, actual },
         ));
     }
     Ok(())
