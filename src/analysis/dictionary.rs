@@ -74,6 +74,25 @@ impl DictionaryAnalyzer {
             .collect()
     }
 
+    /// Resolves stored spellings with independent е -> ё substitutions.
+    /// Input case is preserved; explicit ё is never replaced by е.
+    pub fn parse_with_yo(&self, word: &str) -> Result<Vec<Parse>, DictionaryError> {
+        let mut result = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for matched in self.words.get_with_yo(word)? {
+            for record in matched.records {
+                let mut parse = self
+                    .resolve(&matched.word, record)
+                    .map_err(|source| DictionaryError::binary(&self.words_path, source))?;
+                parse.word = word.to_owned();
+                if seen.insert((parse.normal_form.clone(), parse.tag.clone())) {
+                    result.push(parse);
+                }
+            }
+        }
+        Ok(result)
+    }
+
     fn resolve(&self, word: &str, record: WordRecord) -> Result<Parse, BinaryError> {
         let paradigm = usize::from(record.paradigm_id);
         let form = usize::from(record.form_index);

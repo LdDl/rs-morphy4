@@ -23,7 +23,7 @@ impl Storage {
         Ok(results)
     }
 
-    fn collect<R: DawgRecord>(
+    pub fn collect<R: DawgRecord>(
         &self,
         index: usize,
         payload: &mut Vec<u8>,

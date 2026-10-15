@@ -1,3 +1,6 @@
+#[path = "dawg/yo_spelling.rs"]
+mod yo_spelling;
+
 #[path = "dawg/analysis_errors.rs"]
 mod analysis_errors;
 

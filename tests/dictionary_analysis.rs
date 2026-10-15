@@ -181,8 +181,7 @@ fn spelling_merge_preserves_input_and_distinct_cases() {
     assert!(variants.iter().any(|p| p.normal_form == "весь"));
     assert!(ANALYZER.parse_exact("елка").unwrap().is_empty());
     assert_eq!(ANALYZER.parse("елка").unwrap()[0].normal_form, "ёлка");
-    // Replacing individual positions is outside the current spelling rule.
-    assert!(ANALYZER.parse("семенов").unwrap().is_empty());
+    assert!(!ANALYZER.parse("семенов").unwrap().is_empty());
     assert!(!ANALYZER.parse("семёнов").unwrap().is_empty());
 }
 

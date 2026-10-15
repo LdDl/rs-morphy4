@@ -67,7 +67,7 @@ Analyzer clones share an immutable dictionary and a thread-safe FIFO cache. By d
 
 Known limitations/assumptions:
 
-- Handling of the letters `е` and `ё` swaps all occurrences simultaneously under certain conditions; individual combinations of substitutions are not enumerated.
+- Dictionary lookup checks independent `е` -> `ё` substitutions along existing DAWG branches. Explicit `ё` is preserved; prediction is used only when dictionary lookup finds no analyses.
 - Unknown and compound words are handled by rules. Synthetic analyses without a paradigm have a lexeme containing one form.
 - Agreement with a negative number may produce a different word form than agreement with its positive counterpart: for example, `1 кошка`, but `-1 кошек`. This is a characteristic of the current `make_agree_with_number` algorithm.
 - Word/tag frequencies do not use sentence context. The first analysis can still be unsuitable for a particular sentence.

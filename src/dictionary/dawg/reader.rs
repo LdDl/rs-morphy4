@@ -6,6 +6,7 @@ use crate::dictionary::error::DictionaryError;
 use crate::dictionary::file;
 
 use crate::dictionary::dawg::records::DawgRecord;
+use crate::dictionary::dawg::spelling::SpellingMatch;
 
 #[derive(Debug)]
 /// In-memory DAWG with typed records and checked traversal.
@@ -37,6 +38,25 @@ impl<R: DawgRecord> RecordDawg<R> {
             storage,
             record: PhantomData,
         })
+    }
+
+    /// Returns dictionary spellings with independent е -> ё substitutions.
+    /// Explicit ё is preserved. Only existing DAWG branches are traversed.
+    pub fn get_with_yo(&self, key: &str) -> Result<Vec<SpellingMatch<R>>, DictionaryError> {
+        if !key.contains('е') {
+            let records = self.get(key)?;
+            return Ok(if records.is_empty() {
+                Vec::new()
+            } else {
+                vec![SpellingMatch {
+                    word: key.to_owned(),
+                    records,
+                }]
+            });
+        }
+        self.storage
+            .lookup_spellings(key)
+            .map_err(|source| DictionaryError::binary(&self.path, source))
     }
 
     /// Returns every record for an exact, case-sensitive key in stored guide order.

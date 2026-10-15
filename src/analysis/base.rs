@@ -10,7 +10,7 @@ pub fn parse(dictionary: &DictionaryAnalyzer, word: &str) -> Result<Vec<Parse>, 
     if !special.is_empty() {
         return Ok(special);
     }
-    let known = dictionary.parse_exact(word)?;
+    let known = dictionary.parse_with_yo(word)?;
     if !known.is_empty() {
         return Ok(known);
     }
