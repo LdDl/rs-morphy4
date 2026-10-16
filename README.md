@@ -50,26 +50,29 @@ let dictionary = DictionaryData {
     suffixes: include_bytes!("my_dictionary/suffixes.json"),
     paradigms: include_bytes!("my_dictionary/paradigms.array"),
     words: include_bytes!("my_dictionary/words.dawg"),
+    prediction_suffixes: None,
 };
 let morph = MorphAnalyzer::new(dictionary)?;
 ```
 
-Paths in `include_bytes!` are relative to the Rust file containing this code and are needed only during compilation. A custom dictionary must have the same file structure as data/dicts_ru. Russian dictionaries in pymorphy format 2.4 are supported; anything else will naturally cause a loading error. `DictionaryData` also accepts data from memory instead of embedded files. `MorphAnalyzer::load("path/to/dictionary")` remains available for loading a dictionary from a directory at runtime.
+Russian dictionaries in pymorphy format 2.4 use the file structure shown in `data/dicts_ru`. `DictionaryData` accepts bytes from memory or `include_bytes!`; macro paths are relative to the Rust file. `MorphAnalyzer::load("path/to/dictionary")` loads a dictionary directory at runtime.
 
-The `tag`, `normal_forms` and `word_is_known` methods provide individual analysis results. The `lexeme`, `normalized`, `inflect` and `make_agree_with_number` methods accept a `Parse` from the same dictionary. If no suitable form exists, inflection returns `None`; invalid dictionary references return typed errors. `DictionaryAnalyzer` provides dictionary-only lookup.
+`prediction_suffixes` accepts suffix prediction tables in paradigm-prefix order. With `None`, fallback rules apply. The embedded dictionary includes the complete set; `load(path)` reads these tables when present.
+
+`tag`, `normal_forms` and `word_is_known` return tags, lemmas and dictionary membership. `lexeme`, `normalized`, `inflect` and `make_agree_with_number` operate on a selected `Parse` from the same dictionary. Inflection returns `None` when no suitable form exists; invalid paradigm references return `InflectionError`. `DictionaryAnalyzer` provides dictionary-only lookup.
 
 ## Behavior
 
-It is simple. Leading and trailing whitespace is removed, and input is lowercased. Empty input produces no analyses. `default`, `new` and `load` use the embedded word/tag frequencies to rank results. Equal or missing frequencies retain heuristic order: dictionary analyses, part of speech, nominative case, then feature count. `Parse.score` remains a rule weight, not a probability. `parse_unranked` preserves rule order and bypasses the cache.
+It is simple. Leading and trailing whitespace is removed, and input is lowercased. Empty input produces no analyses. `default`, `new` and `load` use the embedded word/tag frequencies to rank results. Equal or missing frequencies use rule weights, then part of speech, nominative case and feature count. `Parse.score` remains a rule weight, not a probability. `parse_unranked` preserves rule order and bypasses the cache.
 
-`morph.with_probabilities(None)` disables statistical ranking. `morph.with_probabilities(Some(Arc::new(model)))` attaches a custom `WordTagProbabilities` loaded from integer DAWG bytes and a tag table. Model replacement creates an empty independent cache; existing clones keep their model and cache. The model uses exact grammatical features rather than paradigm identifiers, including for custom dictionaries.
+`morph.with_probabilities(None)` disables statistical ranking; `morph.with_probabilities(Some(Arc::new(model)))` attaches a custom `WordTagProbabilities`.
 
-Analyzer clones share an immutable dictionary and a thread-safe FIFO cache. By default, it holds 1024 normalized tokens. `MorphAnalyzer::from_shared(morph.shared_dictionary(), capacity)` creates an analyzer with heuristic ranking and a separate cache; capacity 0 disables storage. Results are returned as independent copies. Concurrent cache misses may cause the same token to be computed more than once.
+Analyzer clones share a dictionary and a thread-safe FIFO cache holding 1024 tokens. `MorphAnalyzer::from_shared(morph.shared_dictionary(), capacity)` creates an analyzer with heuristic ranking and a separate cache of the specified size; capacity 0 disables caching.
 
 Known limitations/assumptions:
 
 - Dictionary lookup checks independent `е` -> `ё` substitutions along existing DAWG branches. Explicit `ё` is preserved; prediction is used only when dictionary lookup finds no analyses.
-- Unknown and compound words are handled by rules. Synthetic analyses without a paradigm have a lexeme containing one form.
+- Unknown words use dictionary roots and suffix models. Prediction can return multiple alternatives. Analyses without a paradigm have a lexeme containing one form.
 - Agreement with a negative number may produce a different word form than agreement with its positive counterpart: for example, `1 кошка`, but `-1 кошек`. This is a characteristic of the current `make_agree_with_number` algorithm.
 - Word/tag frequencies do not use sentence context. The first analysis can still be unsuitable for a particular sentence.
 - Table structure is checked during loading; DAWG transitions and records are checked when accessed.
@@ -86,7 +89,7 @@ assert_eq!((reading.lemma.as_str(), reading.pos.as_str()), ("вести", "INFN"
 
 The result contains the original `candidates`, the selected lemma and part of speech in `decision.selected`, alternatives in `decision.retained` and applied rules in `decision.support`. Ambiguity leaves `selected` as `None`: for example, "Я плачу" retains both платить and плакать. Rule weights are not probabilities.
 
-Local agreement and government rules can be wrong: "Будут вести переговоры" selects весть/NOUN, and "Они смогут мести двор" selects месть/NOUN. These cases are covered by [tests](tests/README.md).
+Context rules consider agreement and government. These local heuristics can make mistakes and do not always resolve semantic ambiguity.
 
 ## Examples and verification
 
@@ -100,9 +103,9 @@ cargo test --locked
 cargo doc --no-deps
 ```
 
-The heuristic-mode corpus check preserves the pinned reference. Statistical ranking is checked separately against fixed-point frequency values and expected first lemmas. For those interested, the [test description](tests/README.md) documents coverage and intentional differences.
+Test coverage and limitations are described in [tests/README.md](tests/README.md).
 
-The measurements below cover heuristic ranking before the frequency model was added; they do not measure statistical ranking or context analysis.
+The measurements below cover heuristic ranking with suffix prediction. Word/tag frequencies and context analysis are disabled.
 
 My configuration for the benchmarks:
 
@@ -113,13 +116,13 @@ Rust 1.98.0
 optimized build
 ```
 
-These results use dictionary loading through `load(path)`, before embedding was added. Separate measurements for `default()` and `new(dictionary)` have not been taken yet; I do not think they are necessary. The table shows medians of five runs per mode.
+Dictionary loading uses `load(path)`. The table shows medians of five runs per mode; loading through `default()` and `new(dictionary)` is not measured.
 
 | Cache mode | Parse calls/s | Dictionary loading, ms | Process RSS after processing, MiB |
 | --- | ---: | ---: | ---: |
-| No cache | 401,583 | 8.36 | 15.3 |
-| 1024 entries (default) | 361,941 | 8.28 | 17.3 |
-| 2504 entries (entire corpus) | 1,754,965 | 7.93 | 19.7 |
+| No cache | 326,936 | 9.76 | 22.9 |
+| 1024 entries (default) | 300,741 | 9.78 | 22.9 |
+| 2504 entries (entire corpus) | 1,715,518 | 9.48 | 23.7 |
 
 The cache was warmed with one corpus pass before measurement. At capacity 1024, the corpus does not fit in the cache: cyclic traversal evicts entries before their next use, so there are no hits. At capacity 2504, all nonempty inputs are found in the cache.
 
