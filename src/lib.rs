@@ -27,5 +27,8 @@ mod tag;
 pub use tag::Tag;
 
 pub use analysis::{CacheInfo, DictionaryAnalyzer, InflectionError, MorphAnalyzer, Parse};
+pub use analysis::{
+    CandidateSupport, ContextAnalysis, ContextDecision, ContextReading, ContextRule, ContextStatus,
+};
 
 pub use dictionary::{DictionaryData, WordTagProbabilities};

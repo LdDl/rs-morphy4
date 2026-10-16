@@ -19,9 +19,11 @@ An intentional difference preserves paradigm/stem references after aspect correc
 
 Spelling regressions cover missing dots at individual and multiple positions, long words, preservation of explicit `ё`, dictionary precedence over prediction, stem preservation during inflection, malformed payloads and missing DAWG branches. Four lexeme sources consisting of discarded spelling guesses were removed; dictionary lexeme checks remain.
 
-Additional tests cover malformed dictionary data, typed errors, cache eviction and disabling, shared dictionaries, independent returned values, concurrent calls, repeated inflection, embedded dictionaries and validation of custom dictionary data. The complete suite contains 85 integration tests and one rustdoc example.
+Additional tests cover malformed dictionary data, typed errors, cache eviction and disabling, shared dictionaries, independent returned values, concurrent calls, repeated inflection, embedded dictionaries and validation of custom dictionary data. The complete suite contains 97 integration tests and two rustdoc examples.
 
 Statistical ranking uses [fixtures/probabilities.json](fixtures/probabilities.json): 5914 word/tag queries with integer frequencies and 2504 expected first lemmas. Frequency data comes from the pinned model described in [data/README.md](../data/README.md). Checks cover missing entries, equivalent tag spellings, unchanged candidate contents and rule weights, disabling/replacing the model, cache isolation, malformed integers and typed model errors. The heuristic reference remains checked with statistics disabled. These checks validate the implementation, not contextual accuracy.
+
+Context checks use [fixtures/context.json](fixtures/context.json): 84 manually selected contexts with frozen decisions, retained lemma/POS pairs, candidate indices and rule evidence. These are behavior regressions, not an independent linguistic accuracy benchmark. The fixture deliberately retains the known incorrect selections in "Будут вести переговоры" and "Они смогут мести двор". Additional checks cover empty input, punctuation boundaries, negation, modal and imperative constructions, ambiguous prepositions, case government, multiple analyses per reading, unchanged word results, cache isolation and disabled statistical ranking.
 
 ```sh
 cargo test --locked

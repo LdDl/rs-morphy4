@@ -4,12 +4,13 @@
 
 [Русская версия](README_RU.md)
 
-[Another](https://www.youtube.com/watch?v=jEI3N9kIyP4) Russian morphological analysis and inflection library (this time implemented in Rust): lemmas, grammatical tags, unknown-word prediction, compound words, lexemes and agreement with integer counts. The library processes individual tokens; tokenization and contextual disambiguation are outside its scope.
+[Another](https://www.youtube.com/watch?v=jEI3N9kIyP4) Russian morphological analysis and inflection library (this time implemented in Rust): lemmas, grammatical tags, unknown-word prediction, compound words, lexemes, agreement with integer counts and contextual analysis selection.
 
 ## Table of contents
 
 - [Usage](#usage)
 - [Behavior](#behavior)
+- [Context analysis](#context-analysis)
 - [Examples and verification](#examples-and-verification)
 - [DAWG and references](#dawg-and-references)
 - [Attribution and licenses](#attribution-and-licenses)
@@ -73,6 +74,20 @@ Known limitations/assumptions:
 - Word/tag frequencies do not use sentence context. The first analysis can still be unsuitable for a particular sentence.
 - Table structure is checked during loading; DAWG transitions and records are checked when accessed.
 
+## Context analysis
+
+`parse_context(tokens)` analyzes a sequence of tokens using neighboring words. Punctuation is supplied as separate tokens.
+
+```rust
+let result = morph.parse_context(["Мы", "будем", "вести", "переговоры", "."])?;
+let reading = result[2].decision.selected.as_ref().unwrap();
+assert_eq!((reading.lemma.as_str(), reading.pos.as_str()), ("вести", "INFN"));
+```
+
+The result contains the original `candidates`, the selected lemma and part of speech in `decision.selected`, alternatives in `decision.retained` and applied rules in `decision.support`. Ambiguity leaves `selected` as `None`: for example, "Я плачу" retains both платить and плакать. Rule weights are not probabilities.
+
+Local agreement and government rules can be wrong: "Будут вести переговоры" selects весть/NOUN, and "Они смогут мести двор" selects месть/NOUN. These cases are covered by [tests](tests/README.md).
+
 ## Examples and verification
 
 Examples and tests can be run from the repository root:
@@ -87,7 +102,7 @@ cargo doc --no-deps
 
 The heuristic-mode corpus check preserves the pinned reference. Statistical ranking is checked separately against fixed-point frequency values and expected first lemmas. For those interested, the [test description](tests/README.md) documents coverage and intentional differences.
 
-The measurements below cover heuristic ranking before the frequency model was added; they do not measure statistical ranking.
+The measurements below cover heuristic ranking before the frequency model was added; they do not measure statistical ranking or context analysis.
 
 My configuration for the benchmarks:
 
