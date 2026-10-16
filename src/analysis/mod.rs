@@ -12,6 +12,7 @@ mod normalization;
 mod parse;
 mod patterns;
 mod prediction;
+mod prefixes;
 mod ranking;
 mod special;
 mod superlative;

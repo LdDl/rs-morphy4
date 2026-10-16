@@ -1,8 +1,9 @@
-use crate::analysis::context::agreement::{all_pos, has_any, subject_agreement};
+use crate::analysis::context::agreement::{all_pos, has_any, nominal_agreement, subject_agreement};
 use crate::analysis::parse::Parse;
 
 const INFINITIVE_GOVERNORS: &[&str] = &[
     "мочь",
+    "смочь",
     "хотеть",
     "начать",
     "начинать",
@@ -21,6 +22,45 @@ fn previous_word(tokens: &[String], index: usize) -> Option<usize> {
     }
 }
 
+fn governs_infinitive(governor: &Parse, infinitive: &Parse) -> bool {
+    if governor.tag.pos != "VERB" || !has_any(governor, &["indc"]) || infinitive.tag.pos != "INFN" {
+        return false;
+    }
+    INFINITIVE_GOVERNORS.contains(&governor.normal_form.as_str())
+        || (governor.normal_form == "быть"
+            && has_any(governor, &["futr"])
+            && has_any(infinitive, &["impf"]))
+}
+
+fn has_subject(
+    tokens: &[String],
+    candidates: &[Vec<Parse>],
+    index: usize,
+    governor: &Parse,
+) -> bool {
+    let subjects = previous_word(tokens, index)
+        .map(|i| candidates[i].as_slice())
+        .unwrap_or_default();
+    all_pos(subjects, &["NOUN", "NPRO"])
+        && subjects
+            .iter()
+            .any(|subject| subject_agreement(subject, governor))
+}
+
+fn following_object(candidates: &[Vec<Parse>], target: usize, infinitive: &Parse) -> bool {
+    let objects = candidates
+        .get(target + 1)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    // A genitive alternative can also attach to the competing noun.
+    has_any(infinitive, &["tran"])
+        && all_pos(objects, &["NOUN", "NPRO"])
+        && objects.iter().any(|object| has_any(object, &["accs"]))
+        && !objects
+            .iter()
+            .any(|object| has_any(object, &["gent", "gen2"]))
+}
+
 pub fn infinitive_governed(
     tokens: &[String],
     candidates: &[Vec<Parse>],
@@ -34,25 +74,39 @@ pub fn infinitive_governed(
         return false;
     };
     let governors = &candidates[previous];
-    if !all_pos(governors, &["VERB"]) {
-        return false;
-    }
-    let subjects = previous_word(tokens, previous)
-        .map(|index| candidates[index].as_slice())
-        .unwrap_or_default();
     governors.iter().any(|governor| {
-        if !has_any(governor, &["indc"]) {
+        if !governs_infinitive(governor, parse) {
             return false;
         }
-        let future = governor.normal_form == "быть"
-            && has_any(governor, &["futr"])
-            && has_any(parse, &["impf"]);
-        let modal = INFINITIVE_GOVERNORS.contains(&governor.normal_form.as_str());
-        let explicit_subject = all_pos(subjects, &["NOUN", "NPRO"])
-            && subjects
+        let explicit_subject = has_subject(tokens, candidates, previous, governor);
+        let future = governor.normal_form == "быть" && has_any(governor, &["futr"]);
+        explicit_subject
+            || (all_pos(governors, &["VERB"])
+                && (has_any(governor, &["1per", "2per"])
+                    || (future && following_object(candidates, target, parse))))
+    })
+}
+
+pub fn inverted_subject(
+    tokens: &[String],
+    candidates: &[Vec<Parse>],
+    target: usize,
+    noun: &Parse,
+) -> bool {
+    let Some(previous) = target.checked_sub(1) else {
+        return false;
+    };
+    let governors = &candidates[previous];
+    if noun.tag.pos != "NOUN" || !all_pos(governors, &["VERB"]) {
+        return false;
+    }
+    governors.iter().any(|governor| {
+        // A competing governed infinitive needs evidence beyond agreement with this noun.
+        subject_agreement(noun, governor)
+            && !has_subject(tokens, candidates, previous, governor)
+            && !candidates[target]
                 .iter()
-                .any(|subject| subject_agreement(subject, governor));
-        (future || modal) && (explicit_subject || has_any(governor, &["1per", "2per"]))
+                .any(|parse| governs_infinitive(governor, parse))
     })
 }
 
@@ -77,5 +131,17 @@ pub fn imperative_with_object(
         .get(target + 1)
         .map(Vec::as_slice)
         .unwrap_or_default();
-    all_pos(objects, &["NOUN", "NPRO"]) && objects.iter().all(|object| has_any(object, &["accs"]))
+    let accusative = all_pos(objects, &["NOUN", "NPRO"])
+        && objects.iter().any(|object| has_any(object, &["accs"]))
+        && objects
+            .iter()
+            .all(|object| has_any(object, &["nomn", "accs"]));
+    // Agreement can instead form a possessive phrase such as "мой дом".
+    let modifier_phrase = candidates[target].iter().any(|modifier| {
+        ["ADJF", "PRTF"].contains(&modifier.tag.pos.as_str())
+            && objects
+                .iter()
+                .any(|object| nominal_agreement(modifier, object))
+    });
+    accusative && !modifier_phrase
 }

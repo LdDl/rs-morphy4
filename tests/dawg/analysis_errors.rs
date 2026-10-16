@@ -98,3 +98,60 @@ fn morphology_does_not_turn_dictionary_errors_into_predictions() {
         }
     ));
 }
+
+#[test]
+fn incomplete_external_prediction_set_is_not_silently_ignored() {
+    let directory = fixture_directory("ёлка", [0, 8, 0, 0]);
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("data/dicts_ru/prediction-suffixes-0.dawg"),
+        directory.path().join("prediction-suffixes-0.dawg"),
+    )
+    .unwrap();
+    let error = DictionaryAnalyzer::load(directory.path()).unwrap_err();
+    assert!(matches!(error, DictionaryError::IoError { source, .. }
+        if source.kind() == std::io::ErrorKind::NotFound));
+}
+
+fn prediction_analyzer(record: &[u8]) -> rs_morphy4::MorphAnalyzer {
+    let directory = fixture_directory("ёлка", [0, 8, 0, 0]);
+    let bytes = DawgFixture::new("иками", STANDARD.encode(record).as_bytes()).bytes();
+    for index in 0..3 {
+        fs::write(
+            directory
+                .path()
+                .join(format!("prediction-suffixes-{index}.dawg")),
+            &bytes,
+        )
+        .unwrap();
+    }
+    rs_morphy4::MorphAnalyzer::load(directory.path()).unwrap()
+}
+
+#[test]
+fn corrupt_prediction_references_propagate_and_are_not_cached() {
+    for record in [[0, 0, 0, 2, 255, 255, 0, 0], [0, 0, 0, 2, 0, 8, 255, 255]] {
+        let analyzer = prediction_analyzer(&record);
+        let error = analyzer.parse("шушпанчиками").unwrap_err();
+        assert!(matches!(error, DictionaryError::BinaryError {
+            path, source: BinaryError::InvalidReference { .. }
+        } if path.ends_with("prediction-suffixes-0.dawg")));
+        assert_eq!(analyzer.cache_info().entries, 0);
+    }
+}
+
+#[test]
+fn incompatible_prediction_affixes_do_not_fabricate_a_stem() {
+    // Paradigm 8 form 0 requires the suffix "ка", not "чиками".
+    let analyzer = prediction_analyzer(&[0, 0, 0, 2, 0, 8, 0, 0]);
+    let parses = analyzer.parse("шушпанчиками").unwrap();
+    assert!(parses.iter().all(|parse| parse.paradigm_id != Some(8)));
+}
+
+#[test]
+fn malformed_prediction_payload_keeps_its_file_path() {
+    let analyzer = prediction_analyzer(&[0, 0, 0, 2]);
+    let error = analyzer.parse("шушпанчиками").unwrap_err();
+    assert!(matches!(error, DictionaryError::BinaryError {
+        path, source: BinaryError::InvalidRecordLength { expected: 8, actual: 4 }
+    } if path.ends_with("prediction-suffixes-0.dawg")));
+}

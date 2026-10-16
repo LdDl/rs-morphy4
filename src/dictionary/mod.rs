@@ -6,8 +6,10 @@ mod error;
 mod file;
 mod metadata;
 mod paradigm;
+mod prediction;
 mod source;
 mod tables;
+pub use prediction::SuffixPrediction;
 
 pub use binary::error::{BinaryError, TableKind};
 pub use error::{DictionaryError, ValidationError};

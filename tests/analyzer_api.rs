@@ -105,8 +105,8 @@ fn api_views_follow_ranking_and_dictionary_membership() {
     let unranked = analyzer.parse_unranked("ѯой").unwrap();
     let ranked = analyzer.parse("ѯой").unwrap();
     assert_eq!(unranked[0].tag.pos, "ADJF");
-    assert_eq!(ranked[0].tag.pos, "NOUN");
-    assert_eq!(ranked[0].score, 0.4);
+    assert_eq!(ranked[0].tag.pos, "ADJF");
+    assert_eq!(ranked[0].score, 0.6);
 }
 
 #[test]

@@ -11,7 +11,9 @@ commit f60ff89ced0aab256470061e1e566fab317b6170.
 Source: https://github.com/mawo-ru/mawo-pymorphy3
 Copyright (c) 2025 MAWO Team. MIT License.
 
-The source project credits pymorphy2 and pymorphy3:
+Suffix prediction by productive paradigms and their suffix frequencies is
+adapted from KnownSuffixAnalyzer in pymorphy3/units/by_analogy.py (pymorphy3 2.0.6).
+The source project also credits pymorphy2 and pymorphy3:
 pymorphy2: Copyright (c) Mikhail Korobov and contributors.
 https://github.com/pymorphy2/pymorphy2
 pymorphy3: Copyright (c) 2022 (continuation of pymorphy2).

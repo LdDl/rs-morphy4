@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use crate::analysis::parse::Parse;
 use crate::dictionary::dawg::{RecordDawg, WordRecord};
 use crate::dictionary::{
-    BinaryError, DictionaryData, DictionaryError, DictionaryTables, Paradigms, TableKind,
+    BinaryError, DictionaryData, DictionaryError, DictionaryTables, Paradigms, SuffixPrediction,
+    TableKind,
 };
 
 #[derive(Debug)]
@@ -13,6 +14,7 @@ pub struct DictionaryAnalyzer {
     paradigms: Paradigms,
     words: RecordDawg<WordRecord>,
     words_path: PathBuf,
+    prediction_suffixes: Vec<SuffixPrediction>,
 }
 
 impl DictionaryAnalyzer {
@@ -29,26 +31,36 @@ impl DictionaryAnalyzer {
         let paradigms = Paradigms::from_bytes(data.paradigms, &tables, "<memory>/paradigms.array")?;
         let words_path = PathBuf::from("<memory>/words.dawg");
         let words = RecordDawg::from_bytes(data.words, &words_path)?;
+        let prediction_suffixes = SuffixPrediction::from_data(
+            data.prediction_suffixes,
+            tables.metadata.compile_options.paradigm_prefixes.len(),
+        )?;
         Ok(Self {
             tables,
             paradigms,
             words,
             words_path,
+            prediction_suffixes,
         })
     }
 
-    /// Loads JSON tables, paradigms and words. Prediction files are not required.
+    /// Loads dictionary tables and optional suffix predictions; partial prediction sets fail.
     pub fn load(directory: impl AsRef<Path>) -> Result<Self, DictionaryError> {
         let directory = directory.as_ref();
         let tables = DictionaryTables::load(directory)?;
         let paradigms = Paradigms::load(directory.join("paradigms.array"), &tables)?;
         let words_path = directory.join("words.dawg");
         let words = RecordDawg::load(&words_path)?;
+        let prediction_suffixes = SuffixPrediction::load(
+            directory,
+            tables.metadata.compile_options.paradigm_prefixes.len(),
+        )?;
         Ok(Self {
             tables,
             paradigms,
             words,
             words_path,
+            prediction_suffixes,
         })
     }
 
@@ -60,6 +72,11 @@ impl DictionaryAnalyzer {
     /// Borrows the validated inflection paradigms.
     pub fn paradigms(&self) -> &Paradigms {
         &self.paradigms
+    }
+
+    /// Borrows prediction tables in paradigm-prefix order; an empty slice disables them.
+    pub fn prediction_suffixes(&self) -> &[SuffixPrediction] {
+        &self.prediction_suffixes
     }
 
     /// Parses an exact, case-sensitive dictionary spelling without ranking or deduplication.
@@ -93,7 +110,8 @@ impl DictionaryAnalyzer {
         Ok(result)
     }
 
-    fn resolve(&self, word: &str, record: WordRecord) -> Result<Parse, BinaryError> {
+    /// Builds a form from a paradigm reference, checking indices and matching both affixes.
+    pub fn resolve(&self, word: &str, record: WordRecord) -> Result<Parse, BinaryError> {
         let paradigm = usize::from(record.paradigm_id);
         let form = usize::from(record.form_index);
         let entries = self.paradigms.entries();

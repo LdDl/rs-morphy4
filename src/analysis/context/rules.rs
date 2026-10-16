@@ -1,7 +1,10 @@
 use crate::analysis::context::agreement::{
     all_pos, has_any, nominal_agreement, preposition_cases, subject_agreement,
 };
-use crate::analysis::context::constructions::{imperative_with_object, infinitive_governed};
+use crate::analysis::context::constructions::{
+    imperative_with_object, infinitive_governed, inverted_subject,
+};
+use crate::analysis::context::phrases::{locative_existence, numeral_agreement};
 use crate::analysis::context::types::{CandidateSupport, ContextRule};
 use crate::analysis::parse::Parse;
 
@@ -55,10 +58,7 @@ pub fn evaluate(
             {
                 evidence.push(ContextRule::PrepositionCase);
             }
-            if pos == "NOUN"
-                && all_pos(left, &["VERB"])
-                && left.iter().any(|p| subject_agreement(parse, p))
-            {
+            if inverted_subject(tokens, candidates, target, parse) {
                 evidence.push(ContextRule::PossibleInvertedSubject);
             }
             if infinitive_governed(tokens, candidates, target, parse) {
@@ -66,6 +66,12 @@ pub fn evaluate(
             }
             if imperative_with_object(tokens, candidates, target, parse) {
                 evidence.push(ContextRule::ImperativeObject);
+            }
+            if numeral_agreement(candidates, target, parse) {
+                evidence.push(ContextRule::NumeralAgreement);
+            }
+            if locative_existence(tokens, candidates, target, parse) {
+                evidence.push(ContextRule::LocativeExistence);
             }
             CandidateSupport {
                 index,

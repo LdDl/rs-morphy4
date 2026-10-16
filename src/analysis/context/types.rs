@@ -12,6 +12,10 @@ pub enum ContextRule {
     PossibleInvertedSubject,
     GovernedInfinitive,
     ImperativeObject,
+    /// Noun agreement with two, three or four.
+    NumeralAgreement,
+    /// A clause with an initial locative phrase, быть and a final nominative noun.
+    LocativeExistence,
 }
 
 impl ContextRule {
@@ -21,7 +25,10 @@ impl ContextRule {
             Self::LeftModifierAgreement | Self::RightNounAgreement | Self::FollowingInfinitive => 3,
             Self::LeftSubjectAgreement => 5,
             Self::PossibleGenitiveComplement | Self::PossibleInvertedSubject => 2,
-            Self::PrepositionCase | Self::ImperativeObject => 4,
+            Self::PrepositionCase
+            | Self::ImperativeObject
+            | Self::NumeralAgreement
+            | Self::LocativeExistence => 4,
             Self::GovernedInfinitive => 6,
         }
     }

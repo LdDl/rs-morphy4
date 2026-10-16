@@ -1,74 +1,67 @@
+use std::collections::HashSet;
+
 use crate::analysis::dictionary::DictionaryAnalyzer;
 use crate::analysis::parse::Parse;
-use crate::dictionary::DictionaryError;
+use crate::dictionary::dawg::WordRecord;
+use crate::dictionary::{BinaryError, DictionaryError};
 
-const STEMS: &[&str] = &[
-    "к", "м", "п", "т", "л", "н", "р", "с", "в", "д", "б", "г", "з", "ж", "х",
-];
-const PERFECTIVE_PREFIXES: &[&str] = &[
-    "вз", "вс", "вы", "до", "за", "из", "ис", "на", "о", "об", "от", "пере", "по", "под", "при",
-    "про", "раз", "рас", "с", "у",
+const NON_PRODUCTIVE: &[&str] = &[
+    "NUMR", "NPRO", "PRED", "PREP", "CONJ", "PRCL", "INTJ", "Apro",
 ];
 
-pub fn parse(
-    dictionary: &DictionaryAnalyzer,
-    word: &str,
-) -> Result<Option<Parse>, DictionaryError> {
-    let positions: Vec<_> = word.char_indices().map(|(i, _)| i).collect();
+pub fn parse(dictionary: &DictionaryAnalyzer, word: &str) -> Result<Vec<Parse>, DictionaryError> {
+    let positions: Vec<_> = word.char_indices().map(|(index, _)| index).collect();
     if positions.len() < 4 {
-        return Ok(None);
+        return Ok(Vec::new());
     }
-    for size in [4, 3, 2] {
-        if positions.len() <= size {
+    let options = &dictionary.tables().metadata.compile_options;
+    let max_length = options.max_suffix_length.min(positions.len());
+    let mut result = Vec::new();
+    let mut seen = HashSet::new();
+    for (prefix_id, model) in dictionary.prediction_suffixes().iter().enumerate().rev() {
+        if !word.starts_with(&options.paradigm_prefixes[prefix_id]) {
             continue;
         }
-        let ending = &word[positions[positions.len() - size]..];
-        for candidate_stem in STEMS {
-            let candidate = format!("{candidate_stem}{ending}");
-            if let Some(mut example) = dictionary.parse_exact(&candidate)?.into_iter().next() {
-                let (Some(id), Some(index)) = (example.paradigm_id, example.form_index) else {
-                    continue;
-                };
-                let forms = dictionary.paradigms().entries()[usize::from(id)].forms();
-                let form = forms[usize::from(index)];
-                let tables = dictionary.tables();
-                let prefixes = &tables.metadata.compile_options.paradigm_prefixes;
-                let suffixes = &tables.suffixes;
-                let stem = word
-                    .strip_prefix(&prefixes[usize::from(form.prefix_id)])
-                    .unwrap_or(word);
-                let stem = stem
-                    .strip_suffix(&suffixes[usize::from(form.suffix_id)])
-                    .unwrap_or(stem);
-                let normal = forms[0];
-                example.word = word.to_owned();
-                example.normal_form = format!(
-                    "{}{}{}",
-                    prefixes[usize::from(normal.prefix_id)],
-                    stem,
-                    suffixes[usize::from(normal.suffix_id)]
-                );
-                example.stem = Some(stem.to_owned());
-                example.score = 0.5;
-                correct_aspect(&mut example);
-                return Ok(Some(example));
+        for length in (1..=max_length).rev() {
+            let split = positions[positions.len() - length];
+            let mut candidates = Vec::new();
+            let mut total = 1.0;
+            for matched in model.records.get_with_yo(&word[split..])? {
+                let fixed = format!("{}{}", &word[..split], matched.word);
+                for record in matched.records {
+                    let mut parse = match dictionary.resolve(
+                        &fixed,
+                        WordRecord {
+                            paradigm_id: record.paradigm_id,
+                            form_index: record.form_index,
+                        },
+                    ) {
+                        Ok(parse) => parse,
+                        // A suffix may match while the complete paradigm affixes do not.
+                        Err(BinaryError::AffixMismatch { .. }) => continue,
+                        Err(error) => return Err(DictionaryError::binary(&model.path, error)),
+                    };
+                    if record.count == 0 || NON_PRODUCTIVE.iter().any(|g| parse.tag.contains(g)) {
+                        continue;
+                    }
+                    total += f64::from(record.count);
+                    if !seen.insert((fixed.clone(), parse.tag.clone(), record.paradigm_id)) {
+                        continue;
+                    }
+                    parse.word = word.to_owned();
+                    parse.score = f64::from(record.count);
+                    candidates.push(parse);
+                }
+            }
+            if total > 1.0 {
+                for mut parse in candidates {
+                    parse.score = 0.5 * parse.score / total;
+                    result.push(parse);
+                }
+                break;
             }
         }
     }
-    Ok(None)
-}
-
-fn correct_aspect(parse: &mut Parse) {
-    if matches!(parse.tag.pos.as_str(), "VERB" | "INFN")
-        && parse.tag.contains("impf")
-        && PERFECTIVE_PREFIXES.iter().any(|p| {
-            parse
-                .word
-                .strip_prefix(p)
-                .is_some_and(|s| s.chars().count() > 2)
-        })
-    {
-        parse.tag.grammemes.remove("impf");
-        parse.tag.grammemes.insert("perf".into());
-    }
+    result.sort_by(|left, right| right.score.total_cmp(&left.score));
+    Ok(result)
 }

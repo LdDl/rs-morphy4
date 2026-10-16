@@ -28,20 +28,11 @@ impl MorphAnalyzer {
         Ok(!self.dictionary().parse(word)?.is_empty())
     }
 
-    /// Resolves the normal form, preferring the current part of speech.
-    pub fn normalized(&self, parse: &Parse) -> Result<Parse, DictionaryError> {
-        if parse.word == parse.normal_form {
-            return Ok(parse.clone());
-        }
-        let parses = self.parse(&parse.normal_form)?;
-        if let Some(result) = parses
-            .iter()
-            .find(|p| p.tag.pos == parse.tag.pos)
-            .or(parses.first())
-        {
-            return Ok(result.clone());
-        }
-        let mut result = parse.clone();
+    /// Returns the first form of the same paradigm, preserving its score and stem.
+    /// Synthetic analyses retain their tag and use their stored normal form as the word.
+    /// Invalid or incomplete references return an inflection error.
+    pub fn normalized(&self, parse: &Parse) -> Result<Parse, InflectionError> {
+        let mut result = self.lexeme(parse)?.remove(0);
         result.word.clone_from(&result.normal_form);
         Ok(result)
     }

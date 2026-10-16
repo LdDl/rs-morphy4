@@ -38,6 +38,8 @@ fn rule_name(rule: ContextRule) -> &'static str {
         ContextRule::PossibleInvertedSubject => "possible_inverted_subject",
         ContextRule::GovernedInfinitive => "governed_infinitive",
         ContextRule::ImperativeObject => "imperative_object",
+        ContextRule::NumeralAgreement => "numeral_agreement",
+        ContextRule::LocativeExistence => "locative_existence",
     }
 }
 

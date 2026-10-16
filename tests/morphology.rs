@@ -108,7 +108,7 @@ fn token_results_do_not_invent_dictionary_references() {
 #[test]
 fn dictionary_mode_stays_independent_from_prediction() {
     assert!(ANALYZER.dictionary().parse("жжжщщ").unwrap().is_empty());
-    let p = first("жжжщщ");
+    let p = first("ѯѯѯѯ");
     assert_eq!(p.tag.pos, "UNKN");
     assert_eq!(p.score, 0.1);
     assert!(p.paradigm_id.is_none());
@@ -157,19 +157,18 @@ fn compound_features_and_particles_follow_rule_precedence() {
 }
 
 #[test]
-fn aspect_correction_keeps_prediction_provenance() {
-    let original = first("фырзуют");
-    let corrected = first("зафырзуют");
-    assert!(original.tag.contains("impf"));
-    assert!(corrected.tag.contains("perf"));
-    assert!(!corrected.tag.contains("impf"));
-    assert_eq!(corrected.normal_form, "зафырзовать");
-    assert_eq!(corrected.score, 0.5);
-    assert!(original.paradigm_id.is_some());
-    assert!(original.form_index.is_some());
-    assert_eq!(original.paradigm_id, corrected.paradigm_id);
-    assert_eq!(original.form_index, corrected.form_index);
-    assert_eq!(corrected.stem.as_deref(), Some("зафырз"));
+fn predicted_verb_aspect_follows_the_paradigm_without_prefix_overrides() {
+    for word in ["фырзуют", "зафырзуют"] {
+        let parses = ANALYZER.parse(word).unwrap();
+        assert!(parses.iter().any(|p| p.tag.contains("perf")));
+        assert!(parses.iter().any(|p| p.tag.contains("impf")));
+        for parse in parses {
+            let lexeme = ANALYZER.lexeme(&parse).unwrap();
+            let source = &lexeme[usize::from(parse.form_index.unwrap())];
+            assert_eq!(source.tag, parse.tag);
+            assert_eq!(source.word, word);
+        }
+    }
 }
 
 #[test]

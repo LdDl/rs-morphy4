@@ -56,11 +56,12 @@ pub fn hyphenated(
         return Ok(None);
     }
     let left_parses = base::parse(dictionary, left)?;
-    let mutable = left_parses.first().is_some_and(|p| {
-        p.tag.pos != "UNKN"
-            && p.score >= 1.0
-            && !(matches!(p.tag.pos.as_str(), "ADJS" | "ADVB") && left.ends_with(['о', 'е']))
-    });
+    let mutable = left != "пол"
+        && left_parses.first().is_some_and(|p| {
+            p.tag.pos != "UNKN"
+                && p.score >= 1.0
+                && !(matches!(p.tag.pos.as_str(), "ADJS" | "ADVB") && left.ends_with(['о', 'е']))
+        });
     let mut tag = right_parse.tag;
     let normal = if mutable {
         let first = &left_parses[0];

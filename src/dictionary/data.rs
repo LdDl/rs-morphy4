@@ -16,6 +16,8 @@ pub struct DictionaryData<'a> {
     pub paradigms: &'a [u8],
     /// Contents of words.dawg.
     pub words: &'a [u8],
+    /// Optional prediction DAWGs in paradigm-prefix order; None omits compiled predictions.
+    pub prediction_suffixes: Option<&'a [&'a [u8]]>,
 }
 
 impl DictionaryData<'static> {
@@ -28,6 +30,7 @@ impl DictionaryData<'static> {
             suffixes: embedded::SUFFIXES,
             paradigms: embedded::PARADIGMS,
             words: embedded::WORDS,
+            prediction_suffixes: Some(embedded::PREDICTION_SUFFIXES),
         }
     }
 }
